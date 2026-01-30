@@ -215,20 +215,29 @@ LEGEND:
 ## `░▒▓█ 0x04 :: DATA STREAM SOURCES █▓▒░`
 
 ```
-> SCANNING LOCAL FILESYSTEM FOR CLAUDE TELEMETRY...
+> SCANNING LOCAL FILESYSTEM FOR CLAUDE CREDENTIALS...
 ```
 
-| OS | DATA_PATH | STATUS |
-|----|-----------|--------|
-| **Linux** | `~/.claude/stats-cache.json` | `[ACTIVE]` |
-| **macOS** | `~/.claude/stats-cache.json` | `[ACTIVE]` |
-| **Windows** | `%USERPROFILE%\.claude\stats-cache.json` | `[ACTIVE]` |
+The app reads your Claude Code credentials to fetch real-time rate limit data from the API:
+
+| OS | CREDENTIALS FILE |
+|----|------------------|
+| **Linux** | `~/.claude/.credentials.json` |
+| **macOS** | `~/.claude/.credentials.json` |
+| **Windows** | `C:\Users\<username>\.claude\.credentials.json` |
 
 ```
+> DATA FLOW:
+  ├─ [1] Read OAuth token from .credentials.json
+  ├─ [2] Call Anthropic API for real-time rate limits
+  └─ [3] Display usage % and reset timers
+
 > PREREQUISITES:
-  ├─ [REQUIRED] Claude Code CLI installed
-  └─ [REQUIRED] At least one Claude session executed (generates stats)
+  ├─ [REQUIRED] Claude Code CLI installed and logged in
+  └─ [REQUIRED] Valid credentials file with OAuth token
 ```
+
+**Note:** The `stats-cache.json` file is only used as a fallback when API data is unavailable.
 
 ---
 
