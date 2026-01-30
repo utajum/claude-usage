@@ -103,30 +103,37 @@ func (a *App) triggerRefresh() {
 func (a *App) refresh() {
 	log.Println("Refreshing stats...")
 
-	// Parse stats cache
-	statsPath := a.config.GetStatsPath()
-	cache, err := stats.ParseStatsCache(statsPath)
+	// Parse credentials for plan info and OAuth token (required for API)
+	credsPath := a.config.GetCredentialsPath()
+	creds, err := stats.ParseCredentials(credsPath)
 	if err != nil {
-		log.Printf("Error parsing stats: %v", err)
+		log.Printf("Error: could not parse credentials: %v", err)
+		log.Printf("Credentials path: %s", credsPath)
 		a.setError()
 		return
 	}
 
-	// Parse credentials for plan info and OAuth token
-	credsPath := a.config.GetCredentialsPath()
-	creds, err := stats.ParseCredentials(credsPath)
-	if err != nil {
-		log.Printf("Warning: could not parse credentials: %v", err)
-		// Continue without credentials - just won't show plan info
+	// Verify we have an access token
+	if creds.ClaudeAiOauth.AccessToken == "" {
+		log.Printf("Error: no access token in credentials file")
+		a.setError()
+		return
 	}
 
-	// Calculate weekly stats from local cache
+	// Parse stats cache (optional - only used as fallback when API unavailable)
+	statsPath := a.config.GetStatsPath()
+	cache, err := stats.ParseStatsCache(statsPath)
+	if err != nil {
+		log.Printf("Note: stats cache not available: %v", err)
+		// Continue without stats cache - will use API data
+		cache = nil
+	}
+
+	// Calculate weekly stats (cache can be nil)
 	weeklyStats := stats.CalculateWeeklyStats(cache, creds)
 
-	// Fetch real rate limits from API (if we have a token)
-	if creds != nil && creds.ClaudeAiOauth.AccessToken != "" {
-		a.fetchAndApplyRateLimits(weeklyStats, creds.ClaudeAiOauth.AccessToken)
-	}
+	// Fetch real rate limits from API
+	a.fetchAndApplyRateLimits(weeklyStats, creds.ClaudeAiOauth.AccessToken)
 
 	// Store stats
 	a.statsMu.Lock()
@@ -209,7 +216,7 @@ func (a *App) setError() {
 	}
 
 	a.tray.SetIcon(iconBytes)
-	a.tray.SetTooltip("Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading stats\nCheck that Claude Code is installed")
+	a.tray.SetTooltip("Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading credentials\nMake sure Claude Code is installed\nand you are logged in")
 }
 
 // GetStats returns the current weekly stats (thread-safe).
