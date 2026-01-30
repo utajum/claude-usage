@@ -2,6 +2,12 @@
 
 ![Screenshot](screenshot.png)
 
+**Linux**
+
+![Windows Screenshot](screenshot-win.png)
+
+**Windows**
+
 </div>
 
 ---
@@ -21,6 +27,8 @@
 **`> ESTABLISHING NEURAL UPLINK TO ANTHROPIC SERVERS...`**
 
 **`> CONNECTION SECURED :: MONITORING ACTIVE`**
+
+🔥 *Watch your tokens burn in real-time. Your wallet weeps silently.* 🔥
 
 </div>
 
