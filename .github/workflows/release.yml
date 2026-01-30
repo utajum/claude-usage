@@ -8,82 +8,105 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  # First job: determine the version
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Need full history for tags
+          fetch-depth: 0
+
+      - name: Get latest tag and increment version
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          VERSION=${LATEST_TAG#v}
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          echo "New version: $NEW_VERSION"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+  # Build on each native OS
+  build:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            binary: claude-usage-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            binary: claude-usage-linux-arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            binary: claude-usage-windows-amd64.exe
+            ldflags_extra: "-H=windowsgui"
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            binary: claude-usage-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            binary: claude-usage-darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Get latest tag and increment version
-        id: version
+      - name: Build
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
         run: |
-          # Get latest tag or default to v0.0.0
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Latest tag: $LATEST_TAG"
-          
-          # Extract version numbers
-          VERSION=${LATEST_TAG#v}
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          
-          # Increment patch version
-          NEW_PATCH=$((PATCH + 1))
-          NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
-          
-          echo "New version: $NEW_VERSION"
-          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Build Linux (amd64)
-        run: |
-          GOOS=linux GOARCH=amd64 go build \
-            -ldflags "-X main.Version=${{ steps.version.outputs.new_version }}" \
-            -o dist/claude-usage-linux-amd64 \
+          go build \
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }} ${{ matrix.ldflags_extra }}" \
+            -o ${{ matrix.binary }} \
             ./cmd/claude-usage
 
-      - name: Build Linux (arm64)
-        run: |
-          GOOS=linux GOARCH=arm64 go build \
-            -ldflags "-X main.Version=${{ steps.version.outputs.new_version }}" \
-            -o dist/claude-usage-linux-arm64 \
-            ./cmd/claude-usage
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.binary }}
 
-      - name: Build Windows (amd64)
-        run: |
-          GOOS=windows GOARCH=amd64 go build \
-            -ldflags "-X main.Version=${{ steps.version.outputs.new_version }} -H=windowsgui" \
-            -o dist/claude-usage-windows-amd64.exe \
-            ./cmd/claude-usage
+  # Create release with all artifacts
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
-      - name: Build macOS (amd64 - Intel)
-        run: |
-          GOOS=darwin GOARCH=amd64 go build \
-            -ldflags "-X main.Version=${{ steps.version.outputs.new_version }}" \
-            -o dist/claude-usage-darwin-amd64 \
-            ./cmd/claude-usage
-
-      - name: Build macOS (arm64 - Apple Silicon)
-        run: |
-          GOOS=darwin GOARCH=arm64 go build \
-            -ldflags "-X main.Version=${{ steps.version.outputs.new_version }}" \
-            -o dist/claude-usage-darwin-arm64 \
-            ./cmd/claude-usage
-
-      - name: List built artifacts
+      - name: List artifacts
         run: ls -la dist/
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.new_version }}
-          name: Release ${{ steps.version.outputs.new_version }}
+          tag_name: ${{ needs.version.outputs.new_version }}
+          name: Release ${{ needs.version.outputs.new_version }}
           body: |
-            ## Claude Usage ${{ steps.version.outputs.new_version }}
+            ## Claude Usage ${{ needs.version.outputs.new_version }}
             
             ### Downloads
             

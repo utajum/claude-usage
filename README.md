@@ -10,6 +10,14 @@
 
 <div align="center">
 
+![Screenshot](screenshot.png)
+
+</div>
+
+---
+
+<div align="center">
+
 ```
 ░█▀▀░█░░░█▀█░█░█░█▀▄░█▀▀░░░█░█░█▀▀░█▀█░█▀▀░█▀▀
 ░█░░░█░░░█▀█░█░█░█░█░█▀▀░░░█░█░▀▀█░█▀█░█░█░█▀▀
@@ -158,16 +166,6 @@ LEGEND:
 ├─ ◀ marker   :: Active rate limiter
 └─ Time       :: Reset countdown
 ```
-
-<div align="center">
-
-**`> VISUAL FEED :: ACTIVE`**
-
-![Screenshot](screenshot.png)
-
-*`> LIVE TELEMETRY FROM THE GRID`*
-
-</div>
 
 ---
 
