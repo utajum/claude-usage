@@ -1,10 +1,10 @@
 ```
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  > RELATED_SYSTEMS                                                           ║
-║  ├─ 📧 gmail-notifier :: KDE plasma notification daemon for Gmail            ║
-║  └─ [https://github.com/utajum/gmail-notifier](https://github.com/utajum/gmail-notifier) ║
+║  └─ 📧 gmail-notifier :: KDE plasma notification daemon for Gmail            ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
+> 🔗 [github.com/utajum/gmail-notifier](https://github.com/utajum/gmail-notifier)
 
 ---
 
