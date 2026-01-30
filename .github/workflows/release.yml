@@ -31,32 +31,41 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
 
-  # Build on each native OS
+  # All builds run in parallel
   build:
     needs: version
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # Linux (no CGO needed - systray uses pure Go + D-Bus)
           - os: ubuntu-latest
             goos: linux
             goarch: amd64
+            cgo: 0
             binary: claude-usage-linux-amd64
           - os: ubuntu-latest
             goos: linux
             goarch: arm64
+            cgo: 0
             binary: claude-usage-linux-arm64
+          # Windows (needs CGO)
           - os: windows-latest
             goos: windows
             goarch: amd64
+            cgo: 1
             binary: claude-usage-windows-amd64.exe
-            ldflags_extra: "-H=windowsgui"
+            ldflags_extra: -H=windowsgui
+          # macOS (needs CGO)
           - os: macos-latest
             goos: darwin
             goarch: amd64
+            cgo: 1
             binary: claude-usage-darwin-amd64
           - os: macos-latest
             goos: darwin
             goarch: arm64
+            cgo: 1
             binary: claude-usage-darwin-arm64
 
     runs-on: ${{ matrix.os }}
@@ -71,9 +80,10 @@ jobs:
 
       - name: Build
         env:
-          CGO_ENABLED: 1
+          CGO_ENABLED: ${{ matrix.cgo }}
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+        shell: bash
         run: |
           go build \
             -ldflags "-X main.Version=${{ needs.version.outputs.new_version }} ${{ matrix.ldflags_extra }}" \
