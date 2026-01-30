@@ -70,3 +70,9 @@ config.json
 cpu.out
 mem.out
 trace.out
+
+# Generated icon assets (built in CI)
+assets/linux/*.png
+assets/windows/*.ico
+assets/macos/AppIcon.iconset/
+assets/macos/AppIcon.icns

@@ -9,19 +9,18 @@
 <div align="center">
 
 ```
-░█▀▀░█░░░█▀█░█░█░█▀▄░█▀▀░░░█░█░█▀▀░█▀█░█▀▀░█▀▀
-░█░░░█░░░█▀█░█░█░█░█░█▀▀░░░█░█░▀▀█░█▀█░█░█░█▀▀
-░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀░░▀▀▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀
-        ╔═══════════════════════════════╗
-        ║  SYSTEM TRAY USAGE MONITOR    ║
-        ╚═══════════════════════════════╝
+                                                   
+  ░█▀▀░█░░░█▀█░█░█░█▀▄░█▀▀░░░█░█░█▀▀░█▀█░█▀▀░█▀▀
+  ░█░░░█░░░█▀█░█░█░█░█░█▀▀░░░█░█░▀▀█░█▀█░█░█░█▀▀
+  ░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀░░▀▀▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀
+          ╔═══════════════════════════════╗
+          ║  SYSTEM TRAY USAGE MONITOR    ║
+          ╚═══════════════════════════════╝
 ```
 
 **`> ESTABLISHING NEURAL UPLINK TO ANTHROPIC SERVERS...`**
 
 **`> CONNECTION SECURED :: MONITORING ACTIVE`**
-
-🔥 *Watch your tokens burn in real-time. Your wallet weeps silently.* 🔥
 
 </div>
 
@@ -53,13 +52,14 @@
 > [OK] COMPATIBILITY CHECK COMPLETE
 ```
 
-| PLATFORM | ARCH | STATUS | BINARY |
-|----------|------|--------|--------|
-| 🐧 `LINUX` | x64 | `[SUPPORTED]` | `claude-usage-linux-amd64` |
-| 🐧 `LINUX` | ARM64 | `[SUPPORTED]` | `claude-usage-linux-arm64` |
-| 🪟 `WINDOWS` | x64 | `[SUPPORTED]` | `claude-usage-windows-amd64.exe` |
-| 🍎 `MACOS` | Intel | `[SUPPORTED]` | `claude-usage-darwin-amd64` |
-| 🍎 `MACOS` | Apple Silicon | `[SUPPORTED]` | `claude-usage-darwin-arm64` |
+| PLATFORM | ARCH | STATUS | PACKAGE |
+|----------|------|--------|---------|
+| **Windows** | x64 | `[SUPPORTED]` | `claude-usage-windows-amd64.zip` |
+| **macOS** | Universal | `[SUPPORTED]` | `Claude-Usage-*.dmg` |
+| **macOS** | Intel | `[SUPPORTED]` | `claude-usage-darwin-amd64` |
+| **macOS** | Apple Silicon | `[SUPPORTED]` | `claude-usage-darwin-arm64` |
+| **Linux** | x64 | `[SUPPORTED]` | `claude-usage-linux-amd64` |
+| **Linux** | ARM64 | `[SUPPORTED]` | `claude-usage-linux-arm64` |
 
 ```
 > DESKTOP ENVIRONMENT SCAN:
@@ -84,51 +84,95 @@
 
 [https://github.com/utajum/claude-usage/releases](https://github.com/utajum/claude-usage/releases)
 
-### 🐧 `> TARGET: LINUX_x64`
+---
+
+### **Windows** `> TARGET: WINDOWS_x64`
+
+```
+1. Download claude-usage-windows-amd64.zip from releases
+2. Extract the ZIP file
+3. Right-click install-windows.ps1 → "Run with PowerShell"
+4. Find "Claude Usage" in Start Menu
+```
+
+**Manual Installation:**
+```powershell
+# Or run from PowerShell directly:
+powershell -ExecutionPolicy Bypass -File install-windows.ps1
+
+# To uninstall:
+powershell -ExecutionPolicy Bypass -File install-windows.ps1 -Uninstall
+```
+
+**What gets installed:**
+- `%LOCALAPPDATA%\Programs\claude-usage\claude-usage.exe`
+- Start Menu shortcut
+- Startup shortcut (autostart on login)
+
+---
+
+### **macOS** `> TARGET: MACOS (Universal)`
 
 ```bash
-# Download binary
-$ curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-amd64 -o claude-usage
-
-# Initialize and execute
-$ chmod +x claude-usage && ./claude-usage
-
-# [OK] PROCESS SPAWNED :: MONITORING ACTIVE
+# Option 1: Download DMG (recommended)
+1. Download Claude-Usage-*.dmg from releases
+2. Open the DMG file
+3. Drag "Claude Usage" to Applications folder
+4. Right-click → Open (first time only, to bypass Gatekeeper)
 ```
-
-### 🐧 `> TARGET: LINUX_ARM64`
 
 ```bash
-$ curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-arm64 -o claude-usage
-$ chmod +x claude-usage && ./claude-usage
+# Option 2: Command line install
+curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-darwin-arm64 -o claude-usage
+chmod +x claude-usage
+./claude-usage
 ```
 
-### 🪟 `> TARGET: WINDOWS_x64`
-
-```
-1. Download claude-usage-windows-amd64.exe from releases
-```
-   [https://github.com/utajum/claude-usage/releases](https://github.com/utajum/claude-usage/releases)
-
-```
-2. Execute binary
-
-3. Locate icon in system tray
-   > [OK] UPLINK ESTABLISHED
+**Enable autostart:**
+```bash
+# Copy the LaunchAgent plist (from source repo)
+cp assets/macos/com.github.utajum.claude-usage.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.github.utajum.claude-usage.plist
 ```
 
-### 🍎 `> TARGET: MACOS_ARM64 (Apple Silicon)`
+---
+
+### **Linux** `> TARGET: LINUX_x64`
 
 ```bash
-$ curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-darwin-arm64 -o claude-usage
-$ chmod +x claude-usage && ./claude-usage
+# Quick start
+curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-amd64 -o claude-usage
+chmod +x claude-usage
+./claude-usage
 ```
 
-### 🍎 `> TARGET: MACOS_x64 (Intel)`
+**Full installation with desktop integration:**
+```bash
+# Clone and install
+git clone https://github.com/utajum/claude-usage
+cd claude-usage
+make install-linux
+
+# This installs:
+# - Binary to ~/.local/bin/claude-usage
+# - Desktop entry (shows in applications menu)
+# - Icons for all sizes
+# - Autostart on login
+```
+
+**Individual commands:**
+```bash
+make install          # Install binary only
+make desktop-install  # Add to applications menu
+make autostart        # Enable autostart
+make uninstall        # Remove everything
+```
+
+### **Linux** `> TARGET: LINUX_ARM64`
 
 ```bash
-$ curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-darwin-amd64 -o claude-usage
-$ chmod +x claude-usage && ./claude-usage
+curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-arm64 -o claude-usage
+chmod +x claude-usage && ./claude-usage
 ```
 
 ---
@@ -167,9 +211,9 @@ LEGEND:
 
 | OS | DATA_PATH | STATUS |
 |----|-----------|--------|
-| 🐧 `LINUX` | `~/.claude/stats-cache.json` | `[ACTIVE]` |
-| 🍎 `MACOS` | `~/.claude/stats-cache.json` | `[ACTIVE]` |
-| 🪟 `WINDOWS` | `%USERPROFILE%\.claude\stats-cache.json` | `[ACTIVE]` |
+| **Linux** | `~/.claude/stats-cache.json` | `[ACTIVE]` |
+| **macOS** | `~/.claude/stats-cache.json` | `[ACTIVE]` |
+| **Windows** | `%USERPROFILE%\.claude\stats-cache.json` | `[ACTIVE]` |
 
 ```
 > PREREQUISITES:
@@ -187,22 +231,20 @@ LEGEND:
 
 ```bash
 # Clone repository
-$ git clone https://github.com/utajum/claude-usage
-$ cd claude-usage
+git clone https://github.com/utajum/claude-usage
+cd claude-usage
 
 # Build for current platform
-$ make build
+make build
 
 # Or cross-compile for all targets
-$ make build-all
+make build-all
 
-# Deploy to ~/.local/bin
-$ make install
+# Generate icon assets
+make generate-icons
 
-# Enable persistence (Linux)
-$ make autostart
-
-# [OK] BUILD COMPLETE
+# Platform-specific packaging
+make build-macos-app  # Creates .app bundle (macOS only)
 ```
 
 ### `> BUILD REQUIREMENTS`
@@ -211,8 +253,9 @@ $ make autostart
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  DEPENDENCY          VERSION        STATUS                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Go                  1.24+          [REQUIRED]                              │
-│  External libs       none           [PURE GO BUILD]                         │
+│  Go                  1.22+          [REQUIRED]                              │
+│  CGO                 enabled        [REQUIRED for macOS/Windows]            │
+│  External libs       none           [PURE GO BUILD on Linux]                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -228,9 +271,9 @@ Config file locations:
 
 | OS | CONFIG_PATH |
 |----|-------------|
-| 🐧 `LINUX` | `~/.config/claude-usage/config.json` |
-| 🍎 `MACOS` | `~/Library/Application Support/claude-usage/config.json` |
-| 🪟 `WINDOWS` | `%APPDATA%\claude-usage\config.json` |
+| **Linux** | `~/.config/claude-usage/config.json` |
+| **macOS** | `~/Library/Application Support/claude-usage/config.json` |
+| **Windows** | `%APPDATA%\claude-usage\config.json` |
 
 ```json
 {
@@ -246,26 +289,32 @@ Config file locations:
 
 ## `░▒▓█ 0x07 :: PERSISTENCE PROTOCOLS █▓▒░`
 
-### 🐧 `> LINUX :: AUTOSTART`
+### **Linux** `> AUTOSTART`
 
 ```bash
-$ make autostart          # Enable persistence
-$ make autostart-remove   # Disable persistence
+make autostart          # Enable persistence
+make autostart-remove   # Disable persistence
 ```
 
-### 🪟 `> WINDOWS :: AUTOSTART`
+### **Windows** `> AUTOSTART`
+
+The installer automatically creates a Startup shortcut. To manage manually:
 
 ```
-> ADD SHORTCUT TO:
-> %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
+Location: %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Claude Usage.lnk
 ```
 
-### 🍎 `> MACOS :: AUTOSTART`
+### **macOS** `> AUTOSTART`
 
+```bash
+# Enable
+launchctl load ~/Library/LaunchAgents/com.github.utajum.claude-usage.plist
+
+# Disable  
+launchctl unload ~/Library/LaunchAgents/com.github.utajum.claude-usage.plist
 ```
-> System Preferences → Users & Groups → Login Items
-> OR create LaunchAgent plist
-```
+
+Or via System Settings → General → Login Items
 
 ---
 
@@ -301,6 +350,15 @@ LINUX:
 ├─ GNOME: Install AppIndicator extension
 └─ Check system tray is enabled
 
+WINDOWS:
+├─ Check system tray overflow area (click ^ arrow)
+├─ Right-click taskbar → Taskbar settings → System tray icons
+└─ Enable "Claude Usage" to always show
+
+MACOS:
+├─ Check menu bar (may be hidden by notch on newer Macs)
+└─ Try Bartender or similar app to manage menu bar items
+
 ALL PLATFORMS:
 └─ Confirm Claude Code is installed and operational
 ```
@@ -315,7 +373,41 @@ ALL PLATFORMS:
 
 ---
 
-## `░▒▓█ 0x0A :: LICENSE █▓▒░`
+## `░▒▓█ 0x0A :: MAKE TARGETS █▓▒░`
+
+```bash
+make help  # Show all available targets
+```
+
+```
+Development:
+  make build          - Build for current platform
+  make run            - Build and run
+  make test           - Run tests
+  make generate-icons - Generate icon assets
+
+Installation (Linux):
+  make install        - Install binary to ~/.local/bin
+  make install-linux  - Full install (binary + desktop + autostart)
+  make desktop-install- Install desktop entry (app menu)
+  make autostart      - Enable autostart on login
+  make uninstall      - Remove everything
+
+Installation (macOS):
+  make install-macos  - Install .app bundle + autostart
+  make uninstall-macos- Remove app and autostart
+
+Cross-compilation:
+  make build-linux    - Build for Linux (amd64, arm64)
+  make build-windows  - Build for Windows (amd64)
+  make build-macos    - Build for macOS (Intel, Apple Silicon)
+  make build-macos-app- Build macOS .app bundle
+  make build-all      - Build for all platforms
+```
+
+---
+
+## `░▒▓█ 0x0B :: LICENSE █▓▒░`
 
 ```
 MIT License
@@ -325,17 +417,6 @@ No warranty. Use at your own risk.
 ```
 
 ---
-
-```
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  > RELATED_SYSTEMS                                                           ║
-║  └─ 📧 gmail-notifier :: KDE plasma notification daemon for Gmail            ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-```
-> 🔗 [github.com/utajum/gmail-notifier](https://github.com/utajum/gmail-notifier)
-
----
-
 
 <div align="center">
 
