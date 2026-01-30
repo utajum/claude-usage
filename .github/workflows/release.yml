@@ -1,0 +1,363 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+jobs:
+  # First job: determine the version
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag and increment version
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "Latest tag: $LATEST_TAG"
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_VERSION="v1.0.0"
+          else
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+          echo "New version: $NEW_VERSION"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+  # Generate icons (runs once, shared by all builds)
+  generate-icons:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Generate icons
+        run: go run scripts/generate-icons/main.go
+
+      - name: Upload icon assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: icon-assets
+          path: assets/
+
+  # Build Linux binaries
+  build-linux:
+    needs: [version, generate-icons]
+    strategy:
+      matrix:
+        include:
+          - goarch: amd64
+            binary: claude-usage-linux-amd64
+          - goarch: arm64
+            binary: claude-usage-linux-arm64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Download icon assets
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-assets
+          path: assets/
+
+      - name: Build
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build \
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }}" \
+            -o ${{ matrix.binary }} \
+            ./cmd/claude-usage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.binary }}
+
+  # Build Windows with proper packaging
+  build-windows:
+    needs: [version, generate-icons]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Download icon assets
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-assets
+          path: assets/
+
+      - name: Build Windows executable
+        env:
+          CGO_ENABLED: 1
+          GOOS: windows
+          GOARCH: amd64
+        run: |
+          go build `
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }} -H=windowsgui" `
+            -o claude-usage.exe `
+            ./cmd/claude-usage
+
+      - name: Create Windows package
+        run: |
+          mkdir windows-package
+          copy claude-usage.exe windows-package\
+          copy assets\windows\claude-usage.ico windows-package\
+          copy scripts\install-windows.ps1 windows-package\
+          
+          # Create a simple README for Windows
+          @"
+          Claude Usage - Windows Installation
+          ====================================
+          
+          Quick Install:
+          1. Right-click install-windows.ps1
+          2. Select "Run with PowerShell"
+          
+          Or run from PowerShell:
+            powershell -ExecutionPolicy Bypass -File install-windows.ps1
+          
+          To uninstall:
+            powershell -ExecutionPolicy Bypass -File install-windows.ps1 -Uninstall
+          
+          Manual Install:
+          1. Copy claude-usage.exe to a permanent location
+          2. Create a shortcut in your Start Menu
+          3. Optionally add to Startup folder for autostart
+          "@ | Out-File -FilePath windows-package\README.txt -Encoding utf8
+
+      - name: Create ZIP archive
+        run: |
+          Compress-Archive -Path windows-package\* -DestinationPath claude-usage-windows-amd64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-usage-windows-amd64.zip
+          path: claude-usage-windows-amd64.zip
+
+  # Build macOS with app bundle
+  build-macos:
+    needs: [version, generate-icons]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Download icon assets
+        uses: actions/download-artifact@v4
+        with:
+          name: icon-assets
+          path: assets/
+
+      - name: Build macOS binaries
+        run: |
+          mkdir -p dist
+          
+          # Build ARM64
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build \
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }}" \
+            -o dist/claude-usage-darwin-arm64 \
+            ./cmd/claude-usage
+          
+          # Build AMD64
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build \
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }}" \
+            -o dist/claude-usage-darwin-amd64 \
+            ./cmd/claude-usage
+
+      - name: Create App Bundle
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          APP_DIR="dist/Claude Usage.app"
+          CONTENTS_DIR="$APP_DIR/Contents"
+          MACOS_DIR="$CONTENTS_DIR/MacOS"
+          RESOURCES_DIR="$CONTENTS_DIR/Resources"
+          
+          mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
+          
+          # Create universal binary
+          lipo -create -output "$MACOS_DIR/claude-usage" \
+            dist/claude-usage-darwin-arm64 \
+            dist/claude-usage-darwin-amd64
+          chmod +x "$MACOS_DIR/claude-usage"
+          
+          # Create Info.plist with version
+          sed "s/1.0.0/$VERSION_NUM/g" assets/macos/Info.plist > "$CONTENTS_DIR/Info.plist"
+          
+          # Create .icns from iconset
+          iconutil -c icns assets/macos/AppIcon.iconset -o "$RESOURCES_DIR/AppIcon.icns"
+          
+          # Create PkgInfo
+          echo "APPL????" > "$CONTENTS_DIR/PkgInfo"
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          
+          # Create DMG directory
+          mkdir -p dist/dmg
+          cp -r "dist/Claude Usage.app" dist/dmg/
+          ln -s /Applications dist/dmg/Applications
+          
+          # Create DMG
+          hdiutil create -volname "Claude Usage" \
+            -srcfolder dist/dmg \
+            -ov -format UDZO \
+            "dist/Claude-Usage-${VERSION}-macos.dmg"
+
+      - name: Create ZIP of app bundle
+        run: |
+          cd dist
+          zip -r "Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip" "Claude Usage.app"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claude-Usage-macos.dmg
+          path: dist/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Claude-Usage-macos.zip
+          path: dist/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip
+
+      - name: Upload individual binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-usage-darwin-binaries
+          path: |
+            dist/claude-usage-darwin-arm64
+            dist/claude-usage-darwin-amd64
+
+  # Create release with all artifacts
+  release:
+    needs: [version, build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          
+          # Linux binaries
+          cp artifacts/claude-usage-linux-amd64/claude-usage-linux-amd64 release/
+          cp artifacts/claude-usage-linux-arm64/claude-usage-linux-arm64 release/
+          
+          # Windows package
+          cp artifacts/claude-usage-windows-amd64.zip/claude-usage-windows-amd64.zip release/
+          
+          # macOS packages
+          cp artifacts/Claude-Usage-macos.dmg/*.dmg release/
+          cp artifacts/Claude-Usage-macos.zip/*.zip release/
+          
+          # macOS individual binaries
+          cp artifacts/claude-usage-darwin-binaries/claude-usage-darwin-arm64 release/
+          cp artifacts/claude-usage-darwin-binaries/claude-usage-darwin-amd64 release/
+          
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.new_version }}
+          name: Release ${{ needs.version.outputs.new_version }}
+          body: |
+            ## Claude Usage ${{ needs.version.outputs.new_version }}
+            
+            System tray application for monitoring Claude Code API token usage.
+            
+            ### Downloads
+            
+            | Platform | Package | Description |
+            |----------|---------|-------------|
+            | **Windows** | `claude-usage-windows-amd64.zip` | Installer + executable |
+            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg` | DMG with universal app bundle |
+            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip` | ZIP with universal app bundle |
+            | **Linux x64** | `claude-usage-linux-amd64` | Standalone binary |
+            | **Linux ARM64** | `claude-usage-linux-arm64` | Standalone binary |
+            
+            ### Installation
+            
+            **Windows:**
+            1. Download and extract `claude-usage-windows-amd64.zip`
+            2. Right-click `install-windows.ps1` → "Run with PowerShell"
+            3. Find "Claude Usage" in your Start Menu
+            
+            **macOS:**
+            1. Download the `.dmg` file
+            2. Open and drag "Claude Usage" to Applications
+            3. Right-click the app → Open (first time only, to bypass Gatekeeper)
+            
+            **Linux:**
+            ```bash
+            # Download binary
+            curl -sL https://github.com/utajum/claude-usage/releases/download/${{ needs.version.outputs.new_version }}/claude-usage-linux-amd64 -o claude-usage
+            chmod +x claude-usage
+            
+            # Install with desktop integration
+            sudo mv claude-usage /usr/local/bin/
+            # Or use: make install-linux (from source)
+            ```
+            
+            ### What's New
+            
+            - Windows system tray icon now displays correctly (ICO format support)
+            - Desktop integration for all platforms (Start Menu, Applications, etc.)
+            - macOS .app bundle with proper icon and Info.plist
+            - Autostart support on all platforms
+            
+            ---
+            *Auto-generated release from commit ${{ github.sha }}*
+          files: |
+            release/claude-usage-linux-amd64
+            release/claude-usage-linux-arm64
+            release/claude-usage-windows-amd64.zip
+            release/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg
+            release/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip
+            release/claude-usage-darwin-amd64
+            release/claude-usage-darwin-arm64
+          generate_release_notes: true

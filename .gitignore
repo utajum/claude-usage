@@ -1,0 +1,78 @@
+# Go binaries (at root level only)
+/claude-usage
+/claude-usage.exe
+
+# Build output directories
+/dist/
+/bin/
+/build/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+coverage.out
+coverage.html
+coverage.txt
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Air live reload temp directory
+/tmp/
+
+# Delve debugger
+__debug_bin
+__debug_bin*
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Debug files
+/debug
+*.log
+
+# Local config (may contain custom paths)
+config.json
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+/tmp/
+/temp/
+*.tmp
+
+# Profiling files
+*.prof
+*.pprof
+cpu.out
+mem.out
+trace.out
+
+# Generated icon assets (built in CI)
+assets/linux/*.png
+assets/windows/*.ico
+assets/macos/AppIcon.iconset/
+assets/macos/AppIcon.icns

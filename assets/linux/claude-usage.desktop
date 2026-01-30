@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Claude Usage
+GenericName=Token Usage Monitor
+Comment=Monitor Claude Code API token usage in system tray
+Exec=claude-usage
+Icon=claude-usage
+Terminal=false
+Categories=Utility;Monitor;System;
+Keywords=claude;usage;tokens;api;anthropic;monitor;tray;
+StartupNotify=false
+StartupWMClass=claude-usage
