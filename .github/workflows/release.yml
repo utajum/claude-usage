@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: write
+
+jobs:
+  # First job: determine the version
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest tag and increment version
+        id: version
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "Latest tag: $LATEST_TAG"
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_VERSION="v1.0.0"
+          else
+            VERSION=${LATEST_TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+          echo "New version: $NEW_VERSION"
+          echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+  # All builds run in parallel
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux (no CGO needed - systray uses pure Go + D-Bus)
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cgo: 0
+            binary: claude-usage-linux-amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            cgo: 0
+            binary: claude-usage-linux-arm64
+          # Windows (needs CGO)
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            cgo: 1
+            binary: claude-usage-windows-amd64.exe
+            ldflags_extra: -H=windowsgui
+          # macOS (needs CGO)
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            cgo: 1
+            binary: claude-usage-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            cgo: 1
+            binary: claude-usage-darwin-arm64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        shell: bash
+        run: |
+          go build \
+            -ldflags "-X main.Version=${{ needs.version.outputs.new_version }} ${{ matrix.ldflags_extra }}" \
+            -o ${{ matrix.binary }} \
+            ./cmd/claude-usage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.binary }}
+          path: ${{ matrix.binary }}
+
+  # Create release with all artifacts
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.new_version }}
+          name: Release ${{ needs.version.outputs.new_version }}
+          body: |
+            ## Claude Usage ${{ needs.version.outputs.new_version }}
+            
+            ### Downloads
+            
+            | Platform | Architecture | Download |
+            |----------|--------------|----------|
+            | Linux | x64 | `claude-usage-linux-amd64` |
+            | Linux | ARM64 | `claude-usage-linux-arm64` |
+            | Windows | x64 | `claude-usage-windows-amd64.exe` |
+            | macOS | Intel | `claude-usage-darwin-amd64` |
+            | macOS | Apple Silicon | `claude-usage-darwin-arm64` |
+            
+            ### Installation
+            
+            **Linux/macOS:**
+            ```bash
+            chmod +x claude-usage-*
+            ./claude-usage-linux-amd64  # or appropriate binary
+            ```
+            
+            **Windows:**
+            Just download and run the `.exe` file.
+            
+            ---
+            *Auto-generated release from commit ${{ github.sha }}*
+          files: |
+            dist/claude-usage-linux-amd64
+            dist/claude-usage-linux-arm64
+            dist/claude-usage-windows-amd64.exe
+            dist/claude-usage-darwin-amd64
+            dist/claude-usage-darwin-arm64
+          generate_release_notes: true
