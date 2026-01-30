@@ -137,42 +137,51 @@ launchctl load ~/Library/LaunchAgents/com.github.utajum.claude-usage.plist
 
 ---
 
-### **Linux** `> TARGET: LINUX_x64`
+### **Linux** `> TARGET: LINUX (x64/ARM64)`
 
+**One-liner install (recommended):**
 ```bash
-# Quick start
+curl -sL https://raw.githubusercontent.com/utajum/claude-usage/master/scripts/install-linux.sh | bash
+```
+
+This automatically:
+- Detects your architecture (x64 or ARM64)
+- Downloads the latest release
+- Installs to `~/.local/bin/`
+- Creates desktop entry (shows in applications menu)
+- Enables autostart on login
+
+**Install options:**
+```bash
+# Install without autostart
+curl -sL https://raw.githubusercontent.com/utajum/claude-usage/master/scripts/install-linux.sh | bash -s -- --no-autostart
+
+# Install without desktop entry
+curl -sL https://raw.githubusercontent.com/utajum/claude-usage/master/scripts/install-linux.sh | bash -s -- --no-desktop
+
+# Uninstall
+curl -sL https://raw.githubusercontent.com/utajum/claude-usage/master/scripts/install-linux.sh | bash -s -- --uninstall
+```
+
+**Manual download:**
+```bash
+# x64
 curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-amd64 -o claude-usage
+
+# ARM64
+curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-arm64 -o claude-usage
+
 chmod +x claude-usage
 ./claude-usage
 ```
 
-**Full installation with desktop integration:**
+**Build from source:**
 ```bash
-# Clone and install
 git clone https://github.com/utajum/claude-usage
 cd claude-usage
-make install-linux
-
-# This installs:
-# - Binary to ~/.local/bin/claude-usage
-# - Desktop entry (shows in applications menu)
-# - Icons for all sizes
-# - Autostart on login
-```
-
-**Individual commands:**
-```bash
-make install          # Install binary only
-make desktop-install  # Add to applications menu
-make autostart        # Enable autostart
-make uninstall        # Remove everything
-```
-
-### **Linux** `> TARGET: LINUX_ARM64`
-
-```bash
-curl -sL https://github.com/utajum/claude-usage/releases/latest/download/claude-usage-linux-arm64 -o claude-usage
-chmod +x claude-usage && ./claude-usage
+make install-linux    # Full install with desktop integration
+# or
+make install          # Binary only
 ```
 
 ---
