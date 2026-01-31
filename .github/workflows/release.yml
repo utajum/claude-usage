@@ -3,6 +3,8 @@ name: Release
 on:
   push:
     branches: [main, master]
+  workflow_dispatch:
+    # Allow manual trigger and trigger from other workflows
 
 permissions:
   contents: write
