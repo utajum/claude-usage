@@ -1,6 +1,8 @@
 # Go binaries (at root level only)
 /claude-usage
 /claude-usage.exe
+/claude-usage-debug
+/test-*
 
 # Build output directories
 /dist/

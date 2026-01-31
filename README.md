@@ -283,6 +283,7 @@ make build-macos-app  # Creates .app bundle (macOS only)
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Go                  1.22+          [REQUIRED]                              │
 │  CGO                 enabled        [REQUIRED for macOS/Windows]            │
+│  UPX                 4.0+           [REQUIRED for optimized builds]         │
 │  External libs       none           [PURE GO BUILD on Linux]                │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -409,7 +410,9 @@ make help  # Show all available targets
 
 ```
 Development:
-  make build          - Build for current platform
+  make build          - Build optimized (stripped + UPX, ~5MB)
+  make build-fast     - Build stripped only, no UPX (~7.5MB)
+  make build-debug    - Build with debug symbols (~12MB)
   make run            - Build and run
   make test           - Run tests
   make generate-icons - Generate icon assets

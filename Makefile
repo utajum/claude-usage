@@ -3,7 +3,12 @@
 
 BINARY_NAME=claude-usage
 VERSION?=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-BUILD_FLAGS=-ldflags "-X main.Version=$(VERSION)"
+
+# Optimized build flags (stripped, no debug info) - default for production
+BUILD_FLAGS=-ldflags "-s -w -X main.Version=$(VERSION)" -trimpath
+
+# Debug build flags (with symbols, for development)
+BUILD_FLAGS_DEBUG=-ldflags "-X main.Version=$(VERSION)"
 
 # Output directories
 DIST_DIR=dist
@@ -14,8 +19,8 @@ DESKTOP_FILE=$(HOME)/.config/autostart/claude-usage.desktop
 APPLICATIONS_DIR=$(HOME)/.local/share/applications
 ICONS_DIR=$(HOME)/.local/share/icons/hicolor
 
-.PHONY: all build clean install uninstall run test lint \
-        build-linux build-windows build-macos build-all \
+.PHONY: all build build-fast build-debug clean install uninstall run test lint \
+        check-upx build-linux build-windows build-macos build-all \
         autostart autostart-remove desktop-install desktop-remove \
         install-linux install-macos generate-icons \
         build-macos-app help
@@ -23,9 +28,26 @@ ICONS_DIR=$(HOME)/.local/share/icons/hicolor
 # Default target
 all: build
 
-# Build for current platform
-build:
+# Check if UPX is installed
+check-upx:
+	@command -v upx >/dev/null 2>&1 || \
+		(echo "ERROR: UPX not found. Install with: sudo apt install upx-ucl (Linux), brew install upx (macOS), or choco install upx (Windows)" && exit 1)
+
+# Build for current platform (optimized + UPX compressed, ~5MB)
+build: check-upx
 	go build $(BUILD_FLAGS) -o $(BINARY_NAME) ./cmd/claude-usage
+	upx --best --lzma $(BINARY_NAME)
+	@echo "Built optimized binary: $(BINARY_NAME) (stripped + UPX compressed)"
+
+# Build stripped but without UPX (faster for quick iteration, ~7.5MB)
+build-fast:
+	go build $(BUILD_FLAGS) -o $(BINARY_NAME) ./cmd/claude-usage
+	@echo "Built stripped binary: $(BINARY_NAME) (no UPX compression)"
+
+# Build with debug symbols (for development/debugging, ~12MB)
+build-debug:
+	go build $(BUILD_FLAGS_DEBUG) -o $(BINARY_NAME)-debug ./cmd/claude-usage
+	@echo "Built debug binary: $(BINARY_NAME)-debug (with symbols, no compression)"
 
 # Run the application
 run: build
@@ -72,29 +94,32 @@ generate-icons:
 $(DIST_DIR):
 	mkdir -p $(DIST_DIR)
 
-# Build for Linux (amd64)
-build-linux-amd64: $(DIST_DIR)
+# Build for Linux (amd64) - optimized + UPX
+build-linux-amd64: $(DIST_DIR) check-upx
 	GOOS=linux GOARCH=amd64 go build $(BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/claude-usage
+	upx --best --lzma $(DIST_DIR)/$(BINARY_NAME)-linux-amd64
 
-# Build for Linux (arm64)
-build-linux-arm64: $(DIST_DIR)
+# Build for Linux (arm64) - optimized + UPX
+build-linux-arm64: $(DIST_DIR) check-upx
 	GOOS=linux GOARCH=arm64 go build $(BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-linux-arm64 ./cmd/claude-usage
+	upx --best --lzma $(DIST_DIR)/$(BINARY_NAME)-linux-arm64
 
 # Build for Linux (all architectures)
 build-linux: build-linux-amd64 build-linux-arm64
 
-# Build for Windows (amd64)
-build-windows-amd64: $(DIST_DIR)
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build $(BUILD_FLAGS) -ldflags "-X main.Version=$(VERSION) -H=windowsgui" -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/claude-usage
+# Build for Windows (amd64) - optimized + UPX
+build-windows-amd64: $(DIST_DIR) check-upx
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "-s -w -X main.Version=$(VERSION) -H=windowsgui" -trimpath -o $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe ./cmd/claude-usage
+	upx --best --lzma $(DIST_DIR)/$(BINARY_NAME)-windows-amd64.exe
 
 # Build for Windows
 build-windows: build-windows-amd64
 
-# Build for macOS (Intel)
+# Build for macOS (Intel) - stripped only, no UPX (Gatekeeper compatibility)
 build-macos-amd64: $(DIST_DIR)
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build $(BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-amd64 ./cmd/claude-usage
 
-# Build for macOS (Apple Silicon)
+# Build for macOS (Apple Silicon) - stripped only, no UPX (Gatekeeper compatibility)
 build-macos-arm64: $(DIST_DIR)
 	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build $(BUILD_FLAGS) -o $(DIST_DIR)/$(BINARY_NAME)-darwin-arm64 ./cmd/claude-usage
 
@@ -241,7 +266,9 @@ help:
 	@echo "Claude Usage - Build Targets"
 	@echo ""
 	@echo "Development:"
-	@echo "  make build          - Build for current platform"
+	@echo "  make build          - Build optimized (stripped + UPX, ~5MB)"
+	@echo "  make build-fast     - Build stripped only, no UPX (~7.5MB)"
+	@echo "  make build-debug    - Build with debug symbols (~12MB)"
 	@echo "  make run            - Build and run"
 	@echo "  make test           - Run tests"
 	@echo "  make lint           - Run linter"
