@@ -433,7 +433,35 @@ Cross-compilation:
 
 ---
 
-## `░▒▓█ 0x0B :: LICENSE █▓▒░`
+## `░▒▓█ 0x0B :: SUPPORT THE GRID █▓▒░`
+
+```
+> INITIATING DONATION PROTOCOL...
+> CAFFEINE LEVELS: CRITICALLY LOW
+```
+
+<div align="center">
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/utajum)
+
+</div>
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│   If this tool saved you from rate limit anxiety, consider fueling         │
+│   the development with some caffeinated tokens.                             │
+│                                                                             │
+│   > Every coffee = More features                                            │
+│   > Every coffee = Faster bug fixes                                         │
+│   > Every coffee = Developer happiness++                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## `░▒▓█ 0x0C :: LICENSE █▓▒░`
 
 ```
 MIT License
