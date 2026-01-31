@@ -34,8 +34,8 @@ type Config struct {
 // Default returns a Config with sensible defaults.
 func Default() *Config {
 	return &Config{
-		RefreshInterval:        10 * time.Minute,
-		RefreshIntervalSeconds: 600,
+		RefreshInterval:        5 * time.Minute,
+		RefreshIntervalSeconds: 300,
 		WeeklyBudgetTokens:     DefaultWeeklyBudget,
 		ClaudeStatsPath:        "",
 		ClaudeCredentialsPath:  "",
