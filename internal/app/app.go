@@ -133,7 +133,7 @@ func (a *App) refresh() {
 	weeklyStats := stats.CalculateWeeklyStats(cache, creds)
 
 	// Fetch real rate limits from API
-	a.fetchAndApplyRateLimits(weeklyStats, creds.ClaudeAiOauth.AccessToken)
+	a.fetchAndApplyRateLimits(weeklyStats, creds.ClaudeAiOauth.AccessToken, creds.ClaudeAiOauth.RefreshToken)
 
 	// Store stats
 	a.statsMu.Lock()
@@ -151,13 +151,16 @@ func (a *App) refresh() {
 }
 
 // fetchAndApplyRateLimits fetches rate limits from the API and applies them to weeklyStats.
-func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token string) {
+func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token string, refreshToken string) {
 	// Initialize or update API client
 	if a.apiClient == nil {
 		a.apiClient = api.NewClient(token)
 	} else {
 		a.apiClient.SetToken(token)
 	}
+
+	// Always set the refresh token so the client can auto-refresh on 401
+	a.apiClient.SetRefreshToken(refreshToken)
 
 	// Fetch rate limits
 	rateLimits, err := a.apiClient.FetchRateLimits()

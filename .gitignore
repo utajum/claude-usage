@@ -53,6 +53,10 @@ Thumbs.db
 /debug
 *.log
 
+claude-mitm*
+test-mitm*
+*.md
+
 # Local config (may contain custom paths)
 config.json
 .env
