@@ -4,7 +4,10 @@ on:
   push:
     branches: [main, master]
   workflow_dispatch:
-    # Allow manual trigger and trigger from other workflows
+    # Allow manual trigger from GitHub Actions UI
+  repository_dispatch:
+    # Allow trigger from other workflows (e.g., sync-claude-config)
+    types: [config-updated]
 
 permissions:
   contents: write

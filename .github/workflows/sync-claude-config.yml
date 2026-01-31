@@ -75,8 +75,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Triggering release workflow..."
-          gh workflow run release.yml --ref ${{ github.ref_name }}
+          echo "Triggering release workflow via repository_dispatch..."
+          gh api repos/${{ github.repository }}/dispatches \
+            -f event_type=config-updated
+          echo "Release workflow triggered successfully"
 
       - name: Summary
         run: |
