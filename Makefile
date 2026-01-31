@@ -204,6 +204,22 @@ uninstall-macos:
 	@echo "macOS uninstallation complete"
 
 # ============================================
+# Claude CLI Config Sync
+# ============================================
+
+# Extract and update Claude CLI configuration from installed binary
+sync-config:
+	@./scripts/extract-claude-config.sh --verbose
+
+# Check if Claude CLI config is up to date (for CI/pre-commit)
+check-config:
+	@./scripts/extract-claude-config.sh --check
+
+# Show current Claude CLI config values as JSON
+show-config:
+	@./scripts/extract-claude-config.sh --json
+
+# ============================================
 # Development helpers
 # ============================================
 
@@ -232,6 +248,11 @@ help:
 	@echo "  make fmt            - Format code"
 	@echo "  make clean          - Remove build artifacts"
 	@echo "  make generate-icons - Generate icon assets"
+	@echo ""
+	@echo "Claude CLI Config:"
+	@echo "  make sync-config    - Update config from Claude CLI binary"
+	@echo "  make check-config   - Check if config is up to date"
+	@echo "  make show-config    - Show current config as JSON"
 	@echo ""
 	@echo "Installation (Linux):"
 	@echo "  make install        - Install binary to ~/.local/bin"

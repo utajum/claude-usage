@@ -55,13 +55,14 @@ Thumbs.db
 
 claude-mitm*
 test-mitm*
-*.md
 
 # Local config (may contain custom paths)
 config.json
-.env
 .env.local
 .env.*.local
+
+# Note: internal/config/claude-usage.env IS committed
+# It contains only public values extracted from Claude CLI
 
 # Temporary files
 /tmp/
@@ -80,3 +81,4 @@ assets/linux/*.png
 assets/windows/*.ico
 assets/macos/AppIcon.iconset/
 assets/macos/AppIcon.icns
+!README.md

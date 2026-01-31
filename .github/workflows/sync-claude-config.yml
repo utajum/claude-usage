@@ -1,0 +1,92 @@
+name: Sync Claude CLI Config
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  sync-config:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Claude CLI (official method)
+        run: |
+          echo "Installing Claude CLI..."
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Verify Claude CLI installation
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "Claude CLI version:"
+          claude --version
+          echo ""
+          echo "Claude CLI location:"
+          which claude
+
+      - name: Extract Claude CLI config
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chmod +x ./scripts/extract-claude-config.sh
+          ./scripts/extract-claude-config.sh --verbose
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet internal/config/claude-usage.env; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✅ No changes detected in claude-usage.env"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "🔄 Changes detected in claude-usage.env:"
+            echo ""
+            git diff internal/config/claude-usage.env
+          fi
+
+      - name: Commit and push changes
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Get the new version from the env file
+          NEW_VERSION=$(grep '^CLAUDE_VERSION=' internal/config/claude-usage.env | cut -d'=' -f2)
+          
+          git add internal/config/claude-usage.env
+          git commit -m "chore: update Claude CLI config to v${NEW_VERSION}
+
+          Auto-detected changes in Claude CLI configuration.
+          Updated by sync-claude-config workflow.
+          
+          Run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          git push
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.changes.outputs.changed }}" == "true" ]; then
+            echo "### ✅ Claude CLI config updated!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The following changes were committed:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            git show --stat HEAD >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ℹ️ No changes needed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Claude CLI config is already up to date." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Current config values:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E '^CLAUDE_' internal/config/claude-usage.env >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

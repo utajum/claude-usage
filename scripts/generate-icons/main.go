@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/user/claude-usage/internal/icon"
+	"claude-usage/internal/icon"
 )
 
 func main() {

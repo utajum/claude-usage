@@ -1,4 +1,4 @@
-module github.com/user/claude-usage
+module claude-usage
 
 go 1.24.0
 

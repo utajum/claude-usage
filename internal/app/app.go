@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/user/claude-usage/internal/api"
-	"github.com/user/claude-usage/internal/config"
-	"github.com/user/claude-usage/internal/icon"
-	"github.com/user/claude-usage/internal/stats"
-	"github.com/user/claude-usage/internal/tray"
+	"claude-usage/internal/api"
+	"claude-usage/internal/config"
+	"claude-usage/internal/icon"
+	"claude-usage/internal/stats"
+	"claude-usage/internal/tray"
 )
 
 // App is the main application struct that coordinates all components.

@@ -1,7 +1,7 @@
 package icon
 
 import (
-	"github.com/user/claude-usage/internal/stats"
+	"claude-usage/internal/stats"
 )
 
 // Generator creates icons based on usage statistics.

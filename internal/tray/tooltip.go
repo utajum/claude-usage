@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/user/claude-usage/internal/stats"
-	"github.com/user/claude-usage/pkg/format"
+	"claude-usage/internal/stats"
+	"claude-usage/pkg/format"
 )
 
 // FormatTooltip creates a formatted tooltip string from weekly statistics.

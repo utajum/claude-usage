@@ -10,28 +10,35 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"claude-usage/internal/config"
+)
+
+// Configuration values are loaded from the embedded claude-usage.env file.
+// These values are extracted from the Claude CLI binary by scripts/extract-claude-config.sh
+// and are automatically updated by the sync-claude-config CI workflow.
+var (
+	// usageEndpoint is the OAuth usage endpoint
+	usageEndpoint = config.GetClaudeUsageEndpoint()
+
+	// tokenEndpoint is the OAuth token refresh endpoint
+	tokenEndpoint = config.GetClaudeTokenEndpoint()
+
+	// clientID is the official Claude Code CLI OAuth client ID.
+	// This is a public identifier extracted from the Claude CLI binary.
+	clientID = config.GetClaudeClientID()
+
+	// anthropicBeta is the required beta header for OAuth endpoints
+	anthropicBeta = config.GetClaudeAnthropicBeta()
+
+	// userAgent mimics the Claude CLI
+	userAgent = config.GetClaudeUserAgent()
+
+	// oauthScopes are the OAuth scopes for token refresh
+	oauthScopes = config.GetClaudeOAuthScopes()
 )
 
 const (
-	// usageEndpoint is the OAuth usage endpoint
-	usageEndpoint = "https://api.anthropic.com/api/oauth/usage"
-
-	// tokenEndpoint is the OAuth token refresh endpoint
-	tokenEndpoint = "https://platform.claude.com/v1/oauth/token"
-
-	// clientID is the official Claude Code CLI OAuth client ID.
-	// This is the same client ID used by Anthropic's official Claude Code binary
-	// (verified in claude-code v2.1.27). This is a public identifier and is not
-	// considered sensitive. The official CLI also supports overriding this via
-	// the CLAUDE_CODE_OAUTH_CLIENT_ID environment variable if needed.
-	clientID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
-
-	// anthropicBeta is the required beta header for OAuth endpoints
-	anthropicBeta = "oauth-2025-04-20"
-
-	// userAgent mimics the Claude CLI
-	userAgent = "claude-code/2.1.27"
-
 	// maxRetries is the maximum number of retry attempts for token refresh
 	maxRetries = 5
 )
@@ -193,7 +200,7 @@ func (c *Client) RefreshAccessToken() (string, error) {
 		GrantType:    "refresh_token",
 		RefreshToken: c.refreshToken,
 		ClientID:     clientID,
-		Scope:        "user:inference user:profile user:sessions:claude_code user:mcp_servers",
+		Scope:        oauthScopes,
 	}
 
 	jsonBody, err := json.Marshal(reqBody)

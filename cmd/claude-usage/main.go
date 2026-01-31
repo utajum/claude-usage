@@ -11,8 +11,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/user/claude-usage/internal/app"
-	"github.com/user/claude-usage/internal/config"
+	"claude-usage/internal/app"
+	"claude-usage/internal/config"
 )
 
 // Version is set at build time via -ldflags
