@@ -200,8 +200,8 @@ func (a *App) updateTray(weeklyStats *stats.WeeklyStats) {
 	// Update icon
 	a.tray.SetIcon(iconBytes)
 
-	// Update tooltip with full stats including plan info
-	tooltip := tray.FormatTooltip(weeklyStats)
+	// Update tooltip with platform-appropriate format (Windows gets compact version)
+	tooltip := tray.FormatTooltipForPlatform(weeklyStats)
 	a.tray.SetTooltip(tooltip)
 
 	log.Printf("Icon updated: %d%% usage", percentage)
