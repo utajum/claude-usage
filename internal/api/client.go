@@ -43,11 +43,16 @@ const (
 	maxRetries = 5
 )
 
+// RefreshTokenCallback is called when a new refresh token is received from the server.
+// The callback receives the new refresh token and should persist it.
+type RefreshTokenCallback func(newRefreshToken string)
+
 // Client is a client for fetching rate limit information from the Anthropic API.
 type Client struct {
-	httpClient   *http.Client
-	token        string
-	refreshToken string
+	httpClient           *http.Client
+	token                string
+	refreshToken         string
+	onRefreshTokenUpdate RefreshTokenCallback
 }
 
 // NewClient creates a new API client with the given OAuth token.
@@ -68,6 +73,12 @@ func (c *Client) SetToken(token string) {
 // SetRefreshToken updates the OAuth refresh token.
 func (c *Client) SetRefreshToken(refreshToken string) {
 	c.refreshToken = refreshToken
+}
+
+// SetRefreshTokenCallback sets a callback to be called when the refresh token is rotated.
+// This allows the app to persist the new refresh token to the credentials file.
+func (c *Client) SetRefreshTokenCallback(cb RefreshTokenCallback) {
+	c.onRefreshTokenUpdate = cb
 }
 
 // usageResponse represents the response from /api/oauth/usage
@@ -242,11 +253,17 @@ func (c *Client) RefreshAccessToken() (string, error) {
 
 	// Check if we got a new refresh token (some OAuth servers rotate them)
 	if refreshResp.RefreshToken != "" && refreshResp.RefreshToken != c.refreshToken {
+		oldRefreshToken := c.refreshToken
 		c.refreshToken = refreshResp.RefreshToken
-		log.Printf("WARNING: Received a new refresh token from the server")
+		log.Printf("Received a new refresh token from the server (token rotated)")
 
-		// Write a warning file next to the binary
-		if err := c.writeRefreshTokenWarning(refreshResp.RefreshToken); err != nil {
+		// Call the callback to persist the new refresh token
+		if c.onRefreshTokenUpdate != nil {
+			c.onRefreshTokenUpdate(refreshResp.RefreshToken)
+		}
+
+		// Also write a debug warning file next to the binary (for troubleshooting)
+		if err := c.writeRefreshTokenWarning(refreshResp.RefreshToken, oldRefreshToken); err != nil {
 			log.Printf("Failed to write refresh token warning file: %v", err)
 		}
 	}
@@ -254,8 +271,9 @@ func (c *Client) RefreshAccessToken() (string, error) {
 	return refreshResp.AccessToken, nil
 }
 
-// writeRefreshTokenWarning creates a warning file next to the binary when a new refresh token is received
-func (c *Client) writeRefreshTokenWarning(newRefreshToken string) error {
+// writeRefreshTokenWarning creates a debug file next to the binary when a new refresh token is received.
+// This is kept for debugging purposes even though we now persist tokens to credentials file.
+func (c *Client) writeRefreshTokenWarning(newRefreshToken, oldRefreshToken string) error {
 	exe, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
@@ -263,22 +281,21 @@ func (c *Client) writeRefreshTokenWarning(newRefreshToken string) error {
 
 	warningPath := filepath.Join(filepath.Dir(exe), "NEW_REFRESH_TOKEN_WARNING.txt")
 
-	content := fmt.Sprintf(`WARNING: New Refresh Token Received
+	content := fmt.Sprintf(`DEBUG: Refresh Token Rotation Detected
 ========================================
 
 A new refresh token was received at: %s
 
-The ~/.claude/.credentials.json file was NOT updated.
-The new refresh token is stored IN MEMORY ONLY for this session.
+The credentials file should have been updated automatically.
+This file is kept for debugging purposes.
 
+Old refresh token: %s
 New refresh token: %s
 
-If you restart claude-usage, you may need to re-authenticate if the
-old refresh token has been invalidated by the server.
-
-This file is for informational purposes only.
+If you see authentication errors after restart, check the credentials file.
 `,
 		time.Now().Format(time.RFC3339),
+		oldRefreshToken,
 		newRefreshToken,
 	)
 
@@ -286,7 +303,7 @@ This file is for informational purposes only.
 		return fmt.Errorf("failed to write warning file: %w", err)
 	}
 
-	log.Printf("New refresh token warning written to: %s", warningPath)
+	log.Printf("Refresh token rotation debug info written to: %s", warningPath)
 	return nil
 }
 

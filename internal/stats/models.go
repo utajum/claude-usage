@@ -46,11 +46,12 @@ type Credentials struct {
 
 // OAuthCredentials contains OAuth token information.
 type OAuthCredentials struct {
-	AccessToken      string `json:"accessToken"`
-	RefreshToken     string `json:"refreshToken"`
-	ExpiresAt        int64  `json:"expiresAt"`
-	SubscriptionType string `json:"subscriptionType"`
-	RateLimitTier    string `json:"rateLimitTier"`
+	AccessToken      string   `json:"accessToken"`
+	RefreshToken     string   `json:"refreshToken"`
+	ExpiresAt        int64    `json:"expiresAt"`
+	Scopes           []string `json:"scopes,omitempty"`
+	SubscriptionType string   `json:"subscriptionType"`
+	RateLimitTier    string   `json:"rateLimitTier"`
 }
 
 // WeeklyStats represents calculated weekly usage statistics.

@@ -77,3 +77,13 @@ func (t *Tray) SetTooltip(text string) {
 func (t *Tray) Quit() {
 	systray.Quit()
 }
+
+// SetUpdateComplete marks the update as complete and changes the menu item text.
+// The menu item is disabled since the user needs to restart.
+func (t *Tray) SetUpdateComplete() {
+	if t.menuItems != nil && t.menuItems.Update != nil {
+		t.menuItems.Update.SetTitle("Restart Required")
+		t.menuItems.Update.SetTooltip("Update downloaded. Please restart the application.")
+		t.menuItems.Update.Disable()
+	}
+}

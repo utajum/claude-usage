@@ -163,6 +163,18 @@ func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token stri
 	// Initialize or update API client
 	if a.apiClient == nil {
 		a.apiClient = api.NewClient(token)
+
+		// Set up callback to persist new refresh tokens when the server rotates them
+		credsPath := a.config.GetCredentialsPath()
+		a.apiClient.SetRefreshTokenCallback(func(newRefreshToken string) {
+			log.Printf("Persisting new refresh token to credentials file...")
+			if err := stats.UpdateRefreshToken(credsPath, newRefreshToken); err != nil {
+				log.Printf("ERROR: Failed to update credentials file with new refresh token: %v", err)
+				log.Printf("The new refresh token is in memory but NOT saved. You may need to re-authenticate on restart.")
+			} else {
+				log.Printf("Successfully updated credentials file with new refresh token")
+			}
+		})
 	} else {
 		a.apiClient.SetToken(token)
 	}
@@ -263,5 +275,8 @@ func (a *App) performUpdate() {
 	}
 
 	log.Printf("Update result: %s", result.Message)
-	a.tray.SetTooltip(result.Message)
+	a.tray.SetTooltip("Update installed. Please restart the application.")
+
+	// Mark update as complete - changes menu item to "Restart Required"
+	a.tray.SetUpdateComplete()
 }
