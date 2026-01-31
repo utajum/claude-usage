@@ -14,20 +14,19 @@ jobs:
     outputs:
       new_version: ${{ steps.version.outputs.new_version }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get latest tag and increment version
+      - name: Get latest release version from GitHub API
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          echo "Latest tag: $LATEST_TAG"
-          if [ -z "$LATEST_TAG" ]; then
+          # Use GitHub API to get the latest release (more reliable than git tags)
+          LATEST_RELEASE=$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name' 2>/dev/null || echo "")
+          echo "Latest release: $LATEST_RELEASE"
+          
+          if [ -z "$LATEST_RELEASE" ]; then
             NEW_VERSION="v1.0.0"
           else
-            VERSION=${LATEST_TAG#v}
+            VERSION=${LATEST_RELEASE#v}
             IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
             NEW_PATCH=$((PATCH + 1))
             NEW_VERSION="v${MAJOR}.${MINOR}.${NEW_PATCH}"

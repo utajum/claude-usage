@@ -205,6 +205,10 @@ main() {
     local usage_endpoint="https://api.anthropic.com/api/oauth/usage"
     log "Usage endpoint: $usage_endpoint"
     
+    # Update URL for self-update feature (constant, not from Claude CLI)
+    local update_url="https://github.com/utajum/claude-usage/releases/latest/download"
+    log "Update URL: $update_url"
+    
     # Validate all required values
     [[ -z "$version" ]] && error "Version is empty"
     [[ -z "$client_id" ]] && error "CLIENT_ID is empty"
@@ -225,7 +229,8 @@ main() {
   "token_endpoint": "$token_url",
   "usage_endpoint": "$usage_endpoint",
   "anthropic_beta": "$anthropic_beta",
-  "oauth_scopes": "$oauth_scopes"
+  "oauth_scopes": "$oauth_scopes",
+  "update_url": "$update_url"
 }
 EOF
         return 0
@@ -254,6 +259,9 @@ CLAUDE_TOKEN_ENDPOINT=$token_url
 CLAUDE_USAGE_ENDPOINT=$usage_endpoint
 CLAUDE_ANTHROPIC_BETA=$anthropic_beta
 CLAUDE_OAUTH_SCOPES=$oauth_scopes
+
+# Update URL for self-update feature (not from Claude CLI)
+CLAUDE_UPDATE_URL=$update_url
 EOF
 )
     
@@ -299,6 +307,7 @@ EOF
         echo "  CLAUDE_USAGE_ENDPOINT=$usage_endpoint"
         echo "  CLAUDE_ANTHROPIC_BETA=$anthropic_beta"
         echo "  CLAUDE_OAUTH_SCOPES=$oauth_scopes"
+        echo "  CLAUDE_UPDATE_URL=$update_url"
     fi
 }
 

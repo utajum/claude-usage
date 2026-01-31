@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// Create and run the app
-	application, err := app.New()
+	application, err := app.New(Version)
 	if err != nil {
 		log.Fatalf("Failed to create application: %v", err)
 	}

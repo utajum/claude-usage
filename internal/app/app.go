@@ -11,11 +11,13 @@ import (
 	"claude-usage/internal/icon"
 	"claude-usage/internal/stats"
 	"claude-usage/internal/tray"
+	"claude-usage/internal/update"
 )
 
 // App is the main application struct that coordinates all components.
 type App struct {
 	config    *config.Config
+	version   string
 	tray      *tray.Tray
 	iconGen   *icon.Generator
 	apiClient *api.Client
@@ -25,8 +27,8 @@ type App struct {
 	refreshCh chan struct{}
 }
 
-// New creates a new App instance.
-func New() (*App, error) {
+// New creates a new App instance with the given version string.
+func New(version string) (*App, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Printf("Warning: could not load config, using defaults: %v", err)
@@ -35,7 +37,8 @@ func New() (*App, error) {
 
 	return &App{
 		config:    cfg,
-		tray:      tray.New(),
+		version:   version,
+		tray:      tray.New(version),
 		iconGen:   icon.DefaultGenerator(),
 		apiClient: nil, // Will be initialized when we have a token
 		stopCh:    make(chan struct{}),
@@ -49,6 +52,11 @@ func (a *App) Run() {
 	a.tray.SetOnRefresh(func() {
 		log.Println("Manual refresh triggered")
 		a.triggerRefresh()
+	})
+
+	a.tray.SetOnUpdate(func() {
+		log.Println("Update triggered")
+		a.performUpdate()
 	})
 
 	a.tray.SetOnQuit(func() {
@@ -227,4 +235,33 @@ func (a *App) GetStats() *stats.WeeklyStats {
 	a.statsMu.RLock()
 	defer a.statsMu.RUnlock()
 	return a.stats
+}
+
+// performUpdate downloads and installs the latest version.
+func (a *App) performUpdate() {
+	log.Printf("Starting update from %s", update.GetDownloadURL())
+
+	// Show progress in tooltip
+	a.tray.SetTooltip("Downloading update...")
+
+	// Perform the update
+	result, err := update.Update()
+	if err != nil {
+		log.Printf("Update failed: %v", err)
+		a.tray.SetTooltip("Update failed: " + err.Error())
+		// Restore normal tooltip after a delay
+		go func() {
+			time.Sleep(5 * time.Second)
+			a.statsMu.RLock()
+			stats := a.stats
+			a.statsMu.RUnlock()
+			if stats != nil {
+				a.updateTray(stats)
+			}
+		}()
+		return
+	}
+
+	log.Printf("Update result: %s", result.Message)
+	a.tray.SetTooltip(result.Message)
 }

@@ -89,3 +89,9 @@ func GetClaudeOAuthScopes() string {
 func GetClaudeUserAgent() string {
 	return "claude-code/" + GetClaudeVersion()
 }
+
+// GetUpdateURL returns the base URL for downloading updates.
+// The full URL is constructed by appending the platform-specific binary name.
+func GetUpdateURL() string {
+	return getConfigOrDefault("CLAUDE_UPDATE_URL", "")
+}

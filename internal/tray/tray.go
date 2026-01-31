@@ -7,18 +7,27 @@ import (
 // Tray manages the system tray icon and interactions.
 type Tray struct {
 	menuItems *MenuItems
+	version   string
 	onRefresh func()
+	onUpdate  func()
 	onQuit    func()
 }
 
-// New creates a new Tray manager.
-func New() *Tray {
-	return &Tray{}
+// New creates a new Tray manager with the given version string.
+func New(version string) *Tray {
+	return &Tray{
+		version: version,
+	}
 }
 
 // SetOnRefresh sets the callback for the Refresh menu item.
 func (t *Tray) SetOnRefresh(fn func()) {
 	t.onRefresh = fn
+}
+
+// SetOnUpdate sets the callback for the Update menu item.
+func (t *Tray) SetOnUpdate(fn func()) {
+	t.onUpdate = fn
 }
 
 // SetOnQuit sets the callback for the Quit menu item.
@@ -34,11 +43,11 @@ func (t *Tray) Run(onReady func()) {
 		systray.SetTitle("")
 		systray.SetTooltip("Claude Usage - Loading...")
 
-		// Setup menu
-		t.menuItems = SetupMenu()
+		// Setup menu with version
+		t.menuItems = SetupMenu(t.version)
 
 		// Handle menu events
-		HandleMenuEvents(t.menuItems, t.onRefresh, func() {
+		HandleMenuEvents(t.menuItems, t.onRefresh, t.onUpdate, func() {
 			if t.onQuit != nil {
 				t.onQuit()
 			}
