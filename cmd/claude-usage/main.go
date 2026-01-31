@@ -13,6 +13,7 @@ import (
 
 	"claude-usage/internal/app"
 	"claude-usage/internal/config"
+	"claude-usage/internal/update"
 )
 
 // Version is set at build time via -ldflags
@@ -23,6 +24,9 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("Claude Usage %s starting on %s", Version, config.GetOS())
 	log.Printf("Claude data path: %s", config.GetClaudeDir())
+
+	// Clean up any leftover .old file from Windows update
+	update.CleanupOldBinary()
 
 	// Check if Claude directory exists
 	claudeDir := config.GetClaudeDir()
