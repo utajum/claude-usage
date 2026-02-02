@@ -35,10 +35,12 @@ func New(version string) (*App, error) {
 		cfg = config.Default()
 	}
 
+	log.Printf("Using credential source: %s", cfg.GetSourceDisplayName())
+
 	return &App{
 		config:    cfg,
 		version:   version,
-		tray:      tray.New(version),
+		tray:      tray.New(version, cfg.GetSourceDisplayName()),
 		iconGen:   icon.DefaultGenerator(),
 		apiClient: nil, // Will be initialized when we have a token
 		stopCh:    make(chan struct{}),
@@ -57,6 +59,11 @@ func (a *App) Run() {
 	a.tray.SetOnUpdate(func() {
 		log.Println("Update triggered")
 		a.performUpdate()
+	})
+
+	a.tray.SetOnSourceToggle(func() {
+		log.Println("Source toggle triggered")
+		a.toggleSource()
 	})
 
 	a.tray.SetOnQuit(func() {
@@ -113,7 +120,16 @@ func (a *App) refresh() {
 
 	// Parse credentials for plan info and OAuth token (required for API)
 	credsPath := a.config.GetCredentialsPath()
-	creds, err := stats.ParseCredentials(credsPath)
+	var creds *stats.Credentials
+	var err error
+
+	// Use appropriate parser based on source
+	if a.config.IsOpenCode() {
+		creds, err = stats.ParseOpenCodeCredentials(credsPath)
+	} else {
+		creds, err = stats.ParseCredentials(credsPath)
+	}
+
 	if err != nil {
 		log.Printf("Error: could not parse credentials: %v", err)
 		log.Printf("Credentials path: %s", credsPath)
@@ -165,16 +181,7 @@ func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token stri
 		a.apiClient = api.NewClient(token)
 
 		// Set up callback to persist new refresh tokens when the server rotates them
-		credsPath := a.config.GetCredentialsPath()
-		a.apiClient.SetRefreshTokenCallback(func(newRefreshToken string) {
-			log.Printf("Persisting new refresh token to credentials file...")
-			if err := stats.UpdateRefreshToken(credsPath, newRefreshToken); err != nil {
-				log.Printf("ERROR: Failed to update credentials file with new refresh token: %v", err)
-				log.Printf("The new refresh token is in memory but NOT saved. You may need to re-authenticate on restart.")
-			} else {
-				log.Printf("Successfully updated credentials file with new refresh token")
-			}
-		})
+		a.apiClient.SetRefreshTokenCallback(a.createRefreshTokenCallback())
 	} else {
 		a.apiClient.SetToken(token)
 	}
@@ -239,7 +246,54 @@ func (a *App) setError() {
 	}
 
 	a.tray.SetIcon(iconBytes)
-	a.tray.SetTooltip("Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading credentials\nMake sure Claude Code is installed\nand you are logged in")
+	sourceName := a.config.GetSourceDisplayName()
+	a.tray.SetTooltip("Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading credentials\nMake sure " + sourceName + " is installed\nand you are logged in")
+}
+
+// toggleSource switches between Claude Code and OpenCode credential sources.
+func (a *App) toggleSource() {
+	oldSource := a.config.GetSourceDisplayName()
+	a.config.ToggleSource()
+	newSource := a.config.GetSourceDisplayName()
+
+	log.Printf("Switching credential source from %s to %s", oldSource, newSource)
+
+	// Save the new config
+	if err := a.config.Save(); err != nil {
+		log.Printf("Warning: could not save config: %v", err)
+	}
+
+	// Update the menu item
+	a.tray.UpdateSourceToggle(newSource)
+
+	// Reset the API client so it gets re-initialized with the new credentials
+	a.apiClient = nil
+
+	// Trigger a refresh to load the new credentials
+	a.triggerRefresh()
+}
+
+// createRefreshTokenCallback creates a callback function to persist new refresh tokens.
+// This uses the current config to determine the correct update function.
+func (a *App) createRefreshTokenCallback() func(string) {
+	return func(newRefreshToken string) {
+		log.Printf("Persisting new refresh token to credentials file...")
+		credsPath := a.config.GetCredentialsPath()
+
+		var err error
+		if a.config.IsOpenCode() {
+			err = stats.UpdateOpenCodeRefreshToken(credsPath, newRefreshToken)
+		} else {
+			err = stats.UpdateRefreshToken(credsPath, newRefreshToken)
+		}
+
+		if err != nil {
+			log.Printf("ERROR: Failed to update credentials file with new refresh token: %v", err)
+			log.Printf("The new refresh token is in memory but NOT saved. You may need to re-authenticate on restart.")
+		} else {
+			log.Printf("Successfully updated credentials file with new refresh token")
+		}
+	}
 }
 
 // GetStats returns the current weekly stats (thread-safe).

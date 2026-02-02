@@ -43,6 +43,13 @@ func GetClaudeCredentialsPath() string {
 	return filepath.Join(GetClaudeDir(), ".credentials.json")
 }
 
+// GetOpenCodeCredentialsPath returns the path to OpenCode's auth file.
+// - Linux: ~/.local/share/opencode/auth.json
+// Note: OpenCode is only supported on Linux.
+func GetOpenCodeCredentialsPath() string {
+	return filepath.Join(GetHomeDir(), ".local", "share", "opencode", "auth.json")
+}
+
 // GetConfigDir returns the app's config directory.
 // - Linux: ~/.config/claude-usage (respects XDG_CONFIG_HOME)
 // - macOS: ~/Library/Application Support/claude-usage

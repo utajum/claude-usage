@@ -194,6 +194,14 @@ make install-linux    # Full install with desktop integration
 make install          # Binary only
 ```
 
+**OpenCode Support:**
+
+Claude Usage also supports [OpenCode](https://opencode.ai) credentials on Linux:
+- Right-click the tray icon and click **"Source: Claude Code"** to toggle to OpenCode
+- Credentials are read from `~/.local/share/opencode/auth.json`
+- The app auto-detects available sources on first run
+- If only OpenCode credentials exist, it will be used by default
+
 ---
 
 ## `░▒▓█ 0x03 :: NEURAL INTERFACE █▓▒░`

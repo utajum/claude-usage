@@ -6,17 +6,20 @@ import (
 
 // Tray manages the system tray icon and interactions.
 type Tray struct {
-	menuItems *MenuItems
-	version   string
-	onRefresh func()
-	onUpdate  func()
-	onQuit    func()
+	menuItems         *MenuItems
+	version           string
+	sourceDisplayName string
+	onRefresh         func()
+	onUpdate          func()
+	onSourceToggle    func()
+	onQuit            func()
 }
 
-// New creates a new Tray manager with the given version string.
-func New(version string) *Tray {
+// New creates a new Tray manager with the given version string and source display name.
+func New(version string, sourceDisplayName string) *Tray {
 	return &Tray{
-		version: version,
+		version:           version,
+		sourceDisplayName: sourceDisplayName,
 	}
 }
 
@@ -28,6 +31,11 @@ func (t *Tray) SetOnRefresh(fn func()) {
 // SetOnUpdate sets the callback for the Update menu item.
 func (t *Tray) SetOnUpdate(fn func()) {
 	t.onUpdate = fn
+}
+
+// SetOnSourceToggle sets the callback for the Source toggle menu item (Linux only).
+func (t *Tray) SetOnSourceToggle(fn func()) {
+	t.onSourceToggle = fn
 }
 
 // SetOnQuit sets the callback for the Quit menu item.
@@ -43,11 +51,11 @@ func (t *Tray) Run(onReady func()) {
 		systray.SetTitle("")
 		systray.SetTooltip("Claude Usage - Loading...")
 
-		// Setup menu with version
-		t.menuItems = SetupMenu(t.version)
+		// Setup menu with version and source
+		t.menuItems = SetupMenu(t.version, t.sourceDisplayName)
 
 		// Handle menu events
-		HandleMenuEvents(t.menuItems, t.onRefresh, t.onUpdate, func() {
+		HandleMenuEvents(t.menuItems, t.onRefresh, t.onUpdate, t.onSourceToggle, func() {
 			if t.onQuit != nil {
 				t.onQuit()
 			}
@@ -61,6 +69,14 @@ func (t *Tray) Run(onReady func()) {
 	}, func() {
 		// onExit callback - cleanup if needed
 	})
+}
+
+// UpdateSourceToggle updates the source toggle menu item label.
+func (t *Tray) UpdateSourceToggle(sourceDisplayName string) {
+	t.sourceDisplayName = sourceDisplayName
+	if t.menuItems != nil {
+		t.menuItems.UpdateSourceToggle(sourceDisplayName)
+	}
 }
 
 // SetIcon sets the tray icon from PNG bytes.

@@ -54,6 +54,19 @@ type OAuthCredentials struct {
 	RateLimitTier    string   `json:"rateLimitTier"`
 }
 
+// OpenCodeCredentials represents OpenCode's auth.json structure.
+type OpenCodeCredentials struct {
+	Anthropic OpenCodeAnthropicAuth `json:"anthropic"`
+}
+
+// OpenCodeAnthropicAuth contains OAuth token information in OpenCode's format.
+type OpenCodeAnthropicAuth struct {
+	Type    string `json:"type"`    // "oauth"
+	Refresh string `json:"refresh"` // refresh token
+	Access  string `json:"access"`  // access token
+	Expires int64  `json:"expires"` // expiry timestamp in milliseconds
+}
+
 // WeeklyStats represents calculated weekly usage statistics.
 type WeeklyStats struct {
 	// WeekStart is the start of the current week (Monday 00:00 UTC).
