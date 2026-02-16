@@ -32,7 +32,7 @@
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/utajum)
 
-</div>
+**Project Page:** [https://claude-usage.elevatech.xyz](https://claude-usage.elevatech.xyz)
 
 ---
 
@@ -498,6 +498,8 @@ No warranty. Use at your own risk.
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
+
+**Project Page:** [https://claude-usage.elevatech.xyz](https://claude-usage.elevatech.xyz)
 
 **`> SESSION_END :: 0x00000000`**
 
