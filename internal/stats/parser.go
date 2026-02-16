@@ -1,10 +1,14 @@
 package stats
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
 // ParseStatsCache reads and parses Claude's stats-cache.json file.
@@ -64,10 +68,118 @@ func ParseOpenCodeCredentials(path string) (*Credentials, error) {
 	return creds, nil
 }
 
+// keychainServiceNames are the service names Claude Code uses in macOS Keychain.
+// "Claude Code-credentials" is the primary name used by /login.
+// "Claude Code" is used by some versions for reading.
+var keychainServiceNames = []string{
+	"Claude Code-credentials",
+	"Claude Code",
+}
+
+// ParseKeychainCredentials reads credentials from the macOS Keychain.
+// Claude Code stores OAuth credentials in the Keychain under service name
+// "Claude Code-credentials". This is used as a fallback when the JSON
+// credentials file (~/.claude/.credentials.json) does not exist on macOS.
+// Returns an error if not on macOS or if no keychain entry is found.
+func ParseKeychainCredentials() (*Credentials, error) {
+	if runtime.GOOS != "darwin" {
+		return nil, fmt.Errorf("keychain is only available on macOS")
+	}
+
+	var output []byte
+	var lastErr error
+
+	for _, service := range keychainServiceNames {
+		cmd := exec.Command("security", "find-generic-password", "-s", service, "-w")
+		out, err := cmd.Output()
+		if err == nil {
+			output = out
+			log.Printf("Found credentials in macOS Keychain (service: %q)", service)
+			break
+		}
+		lastErr = err
+	}
+
+	if output == nil {
+		return nil, fmt.Errorf("no credentials found in macOS Keychain: %w", lastErr)
+	}
+
+	var creds Credentials
+	if err := json.Unmarshal(bytes.TrimSpace(output), &creds); err != nil {
+		return nil, fmt.Errorf("failed to parse keychain credentials: %w", err)
+	}
+
+	return &creds, nil
+}
+
 // FileExists checks if a file exists at the given path.
 func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// UpdateKeychainRefreshToken updates the refresh token in the macOS Keychain entry.
+// It reads the current keychain entry, updates the refreshToken field, and writes it back.
+// The -U flag to security add-generic-password updates an existing entry.
+func UpdateKeychainRefreshToken(newRefreshToken string) error {
+	if runtime.GOOS != "darwin" {
+		return fmt.Errorf("keychain is only available on macOS")
+	}
+
+	// Read current keychain entry (try both service names)
+	var output []byte
+	var activeService string
+	for _, service := range keychainServiceNames {
+		cmd := exec.Command("security", "find-generic-password", "-s", service, "-w")
+		out, err := cmd.Output()
+		if err == nil {
+			output = out
+			activeService = service
+			break
+		}
+	}
+	if output == nil {
+		return fmt.Errorf("no existing keychain entry found to update")
+	}
+
+	// Parse into a generic map to preserve all fields
+	var rawCreds map[string]interface{}
+	if err := json.Unmarshal(bytes.TrimSpace(output), &rawCreds); err != nil {
+		return fmt.Errorf("failed to parse keychain JSON: %w", err)
+	}
+
+	// Get the claudeAiOauth section
+	claudeOAuth, ok := rawCreds["claudeAiOauth"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("claudeAiOauth section not found in keychain data")
+	}
+
+	// Update only the refresh token
+	claudeOAuth["refreshToken"] = newRefreshToken
+
+	// Marshal back to JSON
+	updatedJSON, err := json.Marshal(rawCreds)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated credentials: %w", err)
+	}
+
+	// Get current user for account field
+	currentUser := os.Getenv("USER")
+	if currentUser == "" {
+		currentUser = os.Getenv("LOGNAME")
+	}
+
+	// Write back with -U (update existing entry)
+	cmd := exec.Command("security", "add-generic-password",
+		"-s", activeService,
+		"-a", currentUser,
+		"-w", string(updatedJSON),
+		"-U")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to update keychain: %s: %w", string(out), err)
+	}
+
+	return nil
 }
 
 // UpdateOpenCodeRefreshToken updates the refresh token in OpenCode's auth.json file.

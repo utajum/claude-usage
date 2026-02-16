@@ -3,6 +3,7 @@ package app
 
 import (
 	"log"
+	"runtime"
 	"sync"
 	"time"
 
@@ -14,17 +15,24 @@ import (
 	"claude-usage/internal/update"
 )
 
+// Credential origin constants.
+const (
+	credOriginFile     = "file"
+	credOriginKeychain = "keychain"
+)
+
 // App is the main application struct that coordinates all components.
 type App struct {
-	config    *config.Config
-	version   string
-	tray      *tray.Tray
-	iconGen   *icon.Generator
-	apiClient *api.Client
-	stats     *stats.WeeklyStats
-	statsMu   sync.RWMutex
-	stopCh    chan struct{}
-	refreshCh chan struct{}
+	config     *config.Config
+	version    string
+	tray       *tray.Tray
+	iconGen    *icon.Generator
+	apiClient  *api.Client
+	stats      *stats.WeeklyStats
+	statsMu    sync.RWMutex
+	credOrigin string // "file" or "keychain" — tracks where credentials were loaded from
+	stopCh     chan struct{}
+	refreshCh  chan struct{}
 }
 
 // New creates a new App instance with the given version string.
@@ -126,8 +134,22 @@ func (a *App) refresh() {
 	// Use appropriate parser based on source
 	if a.config.IsOpenCode() {
 		creds, err = stats.ParseOpenCodeCredentials(credsPath)
+		if err == nil {
+			a.credOrigin = credOriginFile
+		}
 	} else {
 		creds, err = stats.ParseCredentials(credsPath)
+		if err == nil {
+			a.credOrigin = credOriginFile
+		} else if runtime.GOOS == "darwin" {
+			// Fallback: try macOS Keychain (Claude Code stores credentials there on macOS)
+			log.Printf("Credentials file not found, trying macOS Keychain...")
+			creds, err = stats.ParseKeychainCredentials()
+			if err == nil {
+				a.credOrigin = credOriginKeychain
+				log.Printf("Loaded credentials from macOS Keychain")
+			}
+		}
 	}
 
 	if err != nil {
@@ -247,7 +269,11 @@ func (a *App) setError() {
 
 	a.tray.SetIcon(iconBytes)
 	sourceName := a.config.GetSourceDisplayName()
-	a.tray.SetTooltip("Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading credentials\nMake sure " + sourceName + " is installed\nand you are logged in")
+	tooltip := "Claude Usage\n━━━━━━━━━━━━━━━━━━\nError loading credentials\nMake sure " + sourceName + " is installed\nand you are logged in"
+	if runtime.GOOS == "darwin" {
+		tooltip += "\n\nKeychain may be locked.\nTry: security unlock-keychain"
+	}
+	a.tray.SetTooltip(tooltip)
 }
 
 // toggleSource switches between Claude Code and OpenCode credential sources.
@@ -274,12 +300,24 @@ func (a *App) toggleSource() {
 }
 
 // createRefreshTokenCallback creates a callback function to persist new refresh tokens.
-// This uses the current config to determine the correct update function.
+// This uses the current config and credential origin to determine the correct update function.
 func (a *App) createRefreshTokenCallback() func(string) {
 	return func(newRefreshToken string) {
-		log.Printf("Persisting new refresh token to credentials file...")
-		credsPath := a.config.GetCredentialsPath()
+		log.Printf("Persisting new refresh token (origin: %s)...", a.credOrigin)
 
+		// If credentials came from macOS Keychain, write back there
+		if a.credOrigin == credOriginKeychain {
+			if err := stats.UpdateKeychainRefreshToken(newRefreshToken); err != nil {
+				log.Printf("ERROR: Failed to update keychain with new refresh token: %v", err)
+				log.Printf("The new refresh token is in memory but NOT saved. You may need to re-authenticate on restart.")
+			} else {
+				log.Printf("Successfully updated macOS Keychain with new refresh token")
+			}
+			return
+		}
+
+		// File-based update
+		credsPath := a.config.GetCredentialsPath()
 		var err error
 		if a.config.IsOpenCode() {
 			err = stats.UpdateOpenCodeRefreshToken(credsPath, newRefreshToken)
