@@ -2,6 +2,7 @@
 package app
 
 import (
+	"context"
 	"log"
 	"runtime"
 	"sync"
@@ -29,7 +30,7 @@ type App struct {
 	iconGen    *icon.Generator
 	apiClient  *api.Client
 	stats      *stats.WeeklyStats
-	statsMu    sync.RWMutex
+	mu         sync.RWMutex // guards stats and apiClient
 	credOrigin string // "file" or "keychain" — tracks where credentials were loaded from
 	stopCh     chan struct{}
 	refreshCh  chan struct{}
@@ -50,9 +51,10 @@ func New(version string) (*App, error) {
 		version:   version,
 		tray:      tray.New(version, cfg.GetSourceDisplayName()),
 		iconGen:   icon.DefaultGenerator(),
-		apiClient: nil, // Will be initialized when we have a token
-		stopCh:    make(chan struct{}),
-		refreshCh: make(chan struct{}, 1),
+		apiClient:  nil, // Will be initialized when we have a token
+		credOrigin: credOriginFile,
+		stopCh:     make(chan struct{}),
+		refreshCh:  make(chan struct{}, 1),
 	}, nil
 }
 
@@ -182,9 +184,9 @@ func (a *App) refresh() {
 	a.fetchAndApplyRateLimits(weeklyStats, creds.ClaudeAiOauth.AccessToken, creds.ClaudeAiOauth.RefreshToken)
 
 	// Store stats
-	a.statsMu.Lock()
+	a.mu.Lock()
 	a.stats = weeklyStats
-	a.statsMu.Unlock()
+	a.mu.Unlock()
 
 	// Update tray
 	a.updateTray(weeklyStats)
@@ -198,7 +200,8 @@ func (a *App) refresh() {
 
 // fetchAndApplyRateLimits fetches rate limits from the API and applies them to weeklyStats.
 func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token string, refreshToken string) {
-	// Initialize or update API client
+	// Initialize or update API client (guarded by mutex since toggleSource can nil it)
+	a.mu.Lock()
 	if a.apiClient == nil {
 		a.apiClient = api.NewClient(token)
 
@@ -210,9 +213,11 @@ func (a *App) fetchAndApplyRateLimits(weeklyStats *stats.WeeklyStats, token stri
 
 	// Always set the refresh token so the client can auto-refresh on 401
 	a.apiClient.SetRefreshToken(refreshToken)
+	client := a.apiClient
+	a.mu.Unlock()
 
 	// Fetch rate limits
-	rateLimits, err := a.apiClient.FetchRateLimits()
+	rateLimits, err := client.FetchRateLimits(context.Background())
 	if err != nil {
 		log.Printf("Warning: could not fetch rate limits from API: %v", err)
 		return
@@ -293,7 +298,9 @@ func (a *App) toggleSource() {
 	a.tray.UpdateSourceToggle(newSource)
 
 	// Reset the API client so it gets re-initialized with the new credentials
+	a.mu.Lock()
 	a.apiClient = nil
+	a.mu.Unlock()
 
 	// Trigger a refresh to load the new credentials
 	a.triggerRefresh()
@@ -336,8 +343,8 @@ func (a *App) createRefreshTokenCallback() func(string) {
 
 // GetStats returns the current weekly stats (thread-safe).
 func (a *App) GetStats() *stats.WeeklyStats {
-	a.statsMu.RLock()
-	defer a.statsMu.RUnlock()
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 	return a.stats
 }
 
@@ -356,9 +363,9 @@ func (a *App) performUpdate() {
 		// Restore normal tooltip after a delay
 		go func() {
 			time.Sleep(5 * time.Second)
-			a.statsMu.RLock()
+			a.mu.RLock()
 			stats := a.stats
-			a.statsMu.RUnlock()
+			a.mu.RUnlock()
 			if stats != nil {
 				a.updateTray(stats)
 			}
