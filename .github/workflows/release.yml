@@ -329,15 +329,19 @@ jobs:
             
             **📦 Optimized builds** - Linux and Windows binaries are ~60% smaller with UPX compression!
             
+            ![Total Downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/total?style=flat-square&label=downloads)
+            
             ### Downloads
             
-            | Platform | Package | Description |
-            |----------|---------|-------------|
-            | **Windows** | `claude-usage-windows-amd64.zip` | Installer + executable |
-            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg` | DMG with universal app bundle |
-            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip` | ZIP with universal app bundle |
-            | **Linux x64** | `claude-usage-linux-amd64` | Standalone binary |
-            | **Linux ARM64** | `claude-usage-linux-arm64` | Standalone binary |
+            | Platform | Package | Description | Downloads |
+            |----------|---------|-------------|-----------|
+            | **Windows** | `claude-usage-windows-amd64.zip` | Installer + executable | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/claude-usage-windows-amd64.zip?style=flat-square&label=downloads) |
+            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg` | DMG with universal app bundle | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.dmg?style=flat-square&label=downloads) |
+            | **macOS** | `Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip` | ZIP with universal app bundle | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/Claude-Usage-${{ needs.version.outputs.new_version }}-macos.zip?style=flat-square&label=downloads) |
+            | **macOS Intel** | `claude-usage-darwin-amd64` | Standalone binary (x86_64) | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/claude-usage-darwin-amd64?style=flat-square&label=downloads) |
+            | **macOS ARM64** | `claude-usage-darwin-arm64` | Standalone binary (Apple Silicon) | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/claude-usage-darwin-arm64?style=flat-square&label=downloads) |
+            | **Linux x64** | `claude-usage-linux-amd64` | Standalone binary | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/claude-usage-linux-amd64?style=flat-square&label=downloads) |
+            | **Linux ARM64** | `claude-usage-linux-arm64` | Standalone binary | ![downloads](https://img.shields.io/github/downloads/utajum/claude-usage/${{ needs.version.outputs.new_version }}/claude-usage-linux-arm64?style=flat-square&label=downloads) |
             
             ### Installation
             
