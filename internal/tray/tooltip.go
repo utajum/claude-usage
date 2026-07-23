@@ -80,6 +80,69 @@ func FormatTooltip(weeklyStats *stats.WeeklyStats) string {
 	return strings.TrimRight(sb.String(), "\n")
 }
 
+// menuMaxLines is the maximum number of lines FormatMenuLines can emit:
+// header + plan + optional "STATUS: THROTTLED" + 5-hour bar + weekly bar.
+const menuMaxLines = 5
+
+// FormatMenuLines returns the usage summary as individual lines for display in
+// the tray menu (macOS only). It emits at most menuMaxLines lines — header,
+// plan, optional throttled status, and the 5-hour and weekly block-bar windows
+// (with the ◀ limiting marker) — using the same helpers and formatting as
+// FormatTooltip. The per-model Opus/Sonnet windows are intentionally omitted so
+// the menu stays short enough to avoid the macOS menu scroll indicator; those
+// remain visible in the Linux hover tooltip via FormatTooltip.
+func FormatMenuLines(weeklyStats *stats.WeeklyStats) []string {
+	if weeklyStats == nil {
+		return []string{"CLAUDE USAGE", "No data available"}
+	}
+
+	lines := make([]string, 0, menuMaxLines)
+
+	// Header
+	lines = append(lines, "CLAUDE USAGE")
+
+	// Plan info
+	if weeklyStats.SubscriptionType != "" {
+		planName := format.FormatPlanName(weeklyStats.SubscriptionType, weeklyStats.RateLimitTier)
+		lines = append(lines, fmt.Sprintf("Plan: %s", planName))
+	}
+
+	// Status (throttled warning)
+	if weeklyStats.IsThrottled() {
+		lines = append(lines, "STATUS: THROTTLED")
+	}
+
+	if weeklyStats.HasAPIData {
+		// 5-hour window
+		fiveHourPct := weeklyStats.GetFiveHourPercentage()
+		fiveHourBar := makeProgressBar(fiveHourPct, 10)
+		fiveHourReset := formatShortDuration(time.Until(weeklyStats.FiveHourReset))
+		marker := ""
+		if weeklyStats.IsLimitedByFiveHour() {
+			marker = " ◀"
+		}
+		lines = append(lines, fmt.Sprintf("%s %3d%% %s%s", fiveHourBar, fiveHourPct, fiveHourReset, marker))
+
+		// Weekly window
+		weeklyPct := weeklyStats.GetPercentage()
+		weeklyBar := makeProgressBar(weeklyPct, 10)
+		weeklyReset := formatShortDuration(time.Until(weeklyStats.WeeklyReset))
+		marker = ""
+		if !weeklyStats.IsLimitedByFiveHour() {
+			marker = " ◀"
+		}
+		lines = append(lines, fmt.Sprintf("%s %3d%% %s%s", weeklyBar, weeklyPct, weeklyReset, marker))
+	} else {
+		// Estimated usage based on token counts
+		weeklyPct := weeklyStats.GetPercentage()
+		weeklyBar := makeProgressBar(weeklyPct, 10)
+		daysRemaining := stats.GetDaysRemainingInWeek()
+		lines = append(lines, fmt.Sprintf("%s ~%3d%% %dd", weeklyBar, weeklyPct, daysRemaining))
+	}
+
+	return lines
+}
+
 // formatShortDuration formats a duration as compact "Xh Ym" or "Xd Yh" format.
 func formatShortDuration(d time.Duration) string {
 	if d < 0 {
