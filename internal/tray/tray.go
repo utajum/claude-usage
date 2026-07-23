@@ -71,6 +71,14 @@ func (t *Tray) Run(onReady func()) {
 	})
 }
 
+// UpdateUsage updates the disabled usage-info rows in the menu (macOS only).
+// It is a no-op on other platforms.
+func (t *Tray) UpdateUsage(lines []string) {
+	if t.menuItems != nil {
+		t.menuItems.UpdateUsage(lines)
+	}
+}
+
 // UpdateSourceToggle updates the source toggle menu item label.
 func (t *Tray) UpdateSourceToggle(sourceDisplayName string) {
 	t.sourceDisplayName = sourceDisplayName

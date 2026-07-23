@@ -256,6 +256,10 @@ func (a *App) updateTray(weeklyStats *stats.WeeklyStats) {
 	tooltip := tray.FormatTooltipForPlatform(weeklyStats)
 	a.tray.SetTooltip(tooltip)
 
+	// Also surface the usage summary as menu rows (macOS only; no-op elsewhere),
+	// since the macOS tray tooltip isn't a reliable way to show this info.
+	a.tray.UpdateUsage(tray.FormatMenuLines(weeklyStats))
+
 	log.Printf("Icon updated: %d%% usage", percentage)
 }
 
@@ -274,6 +278,14 @@ func (a *App) setError() {
 		tooltip += "\n\nKeychain may be locked.\nTry: security unlock-keychain"
 	}
 	a.tray.SetTooltip(tooltip)
+
+	// Keep the macOS menu rows in sync so they don't show stale usage data
+	// (no-op on other platforms).
+	a.tray.UpdateUsage([]string{
+		"CLAUDE USAGE",
+		"Error loading credentials",
+		"Make sure " + sourceName + " is installed and you are logged in",
+	})
 }
 
 // toggleSource switches between Claude Code and OpenCode credential sources.
