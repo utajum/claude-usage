@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"math/rand"
 	"time"
 )
 
@@ -169,11 +168,7 @@ func (w *WeeklyStats) GetPercentage() int {
 	limit := GetWeeklyLimit(w.SubscriptionType, w.RateLimitTier)
 
 	if limit == 0 {
-		// Can't calculate without a limit, return placeholder
-		// Use a random value that changes daily (seeded by day)
-		seed := time.Now().UTC().YearDay()
-		r := rand.New(rand.NewSource(int64(seed)))
-		return r.Intn(100)
+		return 0
 	}
 
 	// Calculate percentage
