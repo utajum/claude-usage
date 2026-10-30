@@ -138,7 +138,7 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	return os.WriteFile(GetConfigPath(), data, 0644)
+	return os.WriteFile(GetConfigPath(), data, 0600)
 }
 
 // GetStatsPath returns the effective stats path (config or default).
