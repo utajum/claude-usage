@@ -106,7 +106,10 @@ func Update() (*Result, error) {
 
 	// Verify the download is a valid executable (basic check: has content)
 	info, err := os.Stat(newBinaryPath)
-	if err != nil || info.Size() < 1000 {
+	if err != nil {
+		return nil, fmt.Errorf("failed to stat downloaded file: %w", err)
+	}
+	if info.Size() < 1000 {
 		return nil, fmt.Errorf("downloaded file appears invalid (size: %d)", info.Size())
 	}
 
@@ -245,8 +248,10 @@ func copyFile(src, dst string) error {
 	}
 	defer destFile.Close()
 
-	_, err = io.Copy(destFile, sourceFile)
-	return err
+	if _, err = io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+	return destFile.Sync()
 }
 
 // downloadBinary downloads the binary from the given URL to a temporary file.

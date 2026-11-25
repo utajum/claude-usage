@@ -2,13 +2,12 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"time"
 
 	"claude-usage/internal/config"
@@ -127,17 +126,17 @@ type tokenRefreshResponse struct {
 
 // FetchRateLimits fetches usage data from the OAuth usage endpoint.
 // This is a free endpoint that doesn't consume any tokens.
-func (c *Client) FetchRateLimits() (*RateLimitData, error) {
-	return c.fetchRateLimitsWithRetry(0)
+func (c *Client) FetchRateLimits(ctx context.Context) (*RateLimitData, error) {
+	return c.fetchRateLimitsWithRetry(ctx, 0)
 }
 
 // fetchRateLimitsWithRetry implements retry logic with automatic token refresh on 401
-func (c *Client) fetchRateLimitsWithRetry(attempt int) (*RateLimitData, error) {
+func (c *Client) fetchRateLimitsWithRetry(ctx context.Context, attempt int) (*RateLimitData, error) {
 	if c.token == "" {
 		return nil, fmt.Errorf("no OAuth token configured")
 	}
 
-	req, err := http.NewRequest("GET", usageEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", usageEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -154,7 +153,10 @@ func (c *Client) fetchRateLimitsWithRetry(attempt int) (*RateLimitData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	// Handle 401 Unauthorized with token refresh
 	if resp.StatusCode == http.StatusUnauthorized {
@@ -170,7 +172,7 @@ func (c *Client) fetchRateLimitsWithRetry(attempt int) (*RateLimitData, error) {
 		log.Printf("Token expired (attempt %d/%d), refreshing...", attempt+1, maxRetries)
 
 		// Attempt to refresh the token
-		newToken, err := c.RefreshAccessToken()
+		newToken, err := c.RefreshAccessToken(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to refresh token: %w", err)
 		}
@@ -180,7 +182,7 @@ func (c *Client) fetchRateLimitsWithRetry(attempt int) (*RateLimitData, error) {
 		log.Printf("Token refreshed successfully, retrying request")
 
 		// Retry the request with the new token
-		return c.fetchRateLimitsWithRetry(attempt + 1)
+		return c.fetchRateLimitsWithRetry(ctx, attempt+1)
 	}
 
 	// Check for other errors
@@ -201,7 +203,7 @@ func (c *Client) fetchRateLimitsWithRetry(attempt int) (*RateLimitData, error) {
 
 // RefreshAccessToken uses the refresh token to obtain a new access token.
 // Returns the new access token on success.
-func (c *Client) RefreshAccessToken() (string, error) {
+func (c *Client) RefreshAccessToken(ctx context.Context) (string, error) {
 	if c.refreshToken == "" {
 		return "", fmt.Errorf("no refresh token available")
 	}
@@ -219,7 +221,7 @@ func (c *Client) RefreshAccessToken() (string, error) {
 		return "", fmt.Errorf("failed to marshal refresh request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", tokenEndpoint, bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", tokenEndpoint, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create refresh request: %w", err)
 	}
@@ -234,7 +236,10 @@ func (c *Client) RefreshAccessToken() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to make refresh request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
@@ -253,7 +258,6 @@ func (c *Client) RefreshAccessToken() (string, error) {
 
 	// Check if we got a new refresh token (some OAuth servers rotate them)
 	if refreshResp.RefreshToken != "" && refreshResp.RefreshToken != c.refreshToken {
-		oldRefreshToken := c.refreshToken
 		c.refreshToken = refreshResp.RefreshToken
 		log.Printf("Received a new refresh token from the server (token rotated)")
 
@@ -262,49 +266,9 @@ func (c *Client) RefreshAccessToken() (string, error) {
 			c.onRefreshTokenUpdate(refreshResp.RefreshToken)
 		}
 
-		// Also write a debug warning file next to the binary (for troubleshooting)
-		if err := c.writeRefreshTokenWarning(refreshResp.RefreshToken, oldRefreshToken); err != nil {
-			log.Printf("Failed to write refresh token warning file: %v", err)
-		}
 	}
 
 	return refreshResp.AccessToken, nil
-}
-
-// writeRefreshTokenWarning creates a debug file next to the binary when a new refresh token is received.
-// This is kept for debugging purposes even though we now persist tokens to credentials file.
-func (c *Client) writeRefreshTokenWarning(newRefreshToken, oldRefreshToken string) error {
-	exe, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("failed to get executable path: %w", err)
-	}
-
-	warningPath := filepath.Join(filepath.Dir(exe), "NEW_REFRESH_TOKEN_WARNING.txt")
-
-	content := fmt.Sprintf(`DEBUG: Refresh Token Rotation Detected
-========================================
-
-A new refresh token was received at: %s
-
-The credentials file should have been updated automatically.
-This file is kept for debugging purposes.
-
-Old refresh token: %s
-New refresh token: %s
-
-If you see authentication errors after restart, check the credentials file.
-`,
-		time.Now().Format(time.RFC3339),
-		oldRefreshToken,
-		newRefreshToken,
-	)
-
-	if err := os.WriteFile(warningPath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("failed to write warning file: %w", err)
-	}
-
-	log.Printf("Refresh token rotation debug info written to: %s", warningPath)
-	return nil
 }
 
 // parseUsageResponse converts the API response to RateLimitData

@@ -112,12 +112,6 @@ func ParseKeychainCredentials() (*Credentials, error) {
 	return &creds, nil
 }
 
-// FileExists checks if a file exists at the given path.
-func FileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
 // UpdateKeychainRefreshToken updates the refresh token in the macOS Keychain entry.
 // It reads the current keychain entry, updates the refreshToken field, and writes it back.
 // The -U flag to security add-generic-password updates an existing entry.
